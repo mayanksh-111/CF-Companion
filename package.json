@@ -1,0 +1,231 @@
+{
+  "name": "cf-companion",
+  "displayName": "CF Companion",
+  "description": "Solve Codeforces problems inside VS Code — receive problems from your parser script, view statements, and track your progress.",
+  "version": "0.1.2",
+  "icon" : "./media/icon1.png",
+  "publisher": "Warlock",
+  "author": "Mayank Shakya",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mayanksh-111/CF-Companion"
+  },
+  "bugs": {
+    "url": "https://github.com/mayanksh-111/CF-Companion/issues"
+  },
+  "homepage": "https://github.com/mayanksh-111/CF-Companion#readme",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cfCompanion.openDashboard",
+        "title": "CF Companion: Open Dashboard",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "cfCompanion.openProblem",
+        "title": "CF Companion: Open Problem",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "cfCompanion.refreshContests",
+        "title": "CF Companion: Refresh Problem List",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cfCompanion.setHandle",
+        "title": "CF Companion: Set Codeforces Handle",
+        "icon": "$(account)"
+      },
+      {
+        "command": "cfCompanion.restartServer",
+        "title": "CF Companion: Restart Listener",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "cfCompanion.deleteContest",
+        "title": "CF Companion: Delete Contest",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "cfCompanion.submitSolution",
+        "title": "Codeforces: Submit Solution",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "cfCompanion.createSolution",
+        "title": "CF Companion: Create Solution",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "cfCompanion.openSolution",
+        "title": "CF Companion: Open Solution",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "cfCompanion.runTests",
+        "title": "CF Companion: Run Tests",
+        "icon": "$(play)"
+      },
+      {
+        "command": "cfCompanion.addCustomTest",
+        "title": "CF Companion: Add Custom Test",
+        "icon": "$(add)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "cfCompanion.runTests",
+        "key": "ctrl+'",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "cfCompanion.submitSolution",
+        "key": "ctrl+enter",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "cfCompanion.addCustomTest",
+        "key": "ctrl+alt+a",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "cfCompanion.openProblem",
+        "key": "ctrl+o p"
+      },
+      {
+        "command": "cfCompanion.openDashboard",
+        "key": "ctrl+alt+d"
+      },
+      {
+        "command": "cfCompanion.setHandle",
+        "key": "ctrl+alt+h"
+      },
+      {
+        "command": "cfCompanion.createSolution",
+        "key": "ctrl+alt+n"
+      },
+      {
+        "command": "cfCompanion.openSolution",
+        "key": "ctrl+o s"
+      },
+      {
+        "command": "cfCompanion.refreshContests",
+        "key": "ctrl+alt+r"
+      },
+      {
+        "command": "cfCompanion.restartServer",
+        "key": "ctrl+alt+l"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cfCompanion",
+          "title": "CF Companion",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "cfCompanion": [
+        {
+          "type": "webview",
+          "id": "cfCompanion.sidebarView",
+          "name": "CF Companion"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CF Companion",
+      "properties": {
+        "cfCompanion.port": {
+          "type": "number",
+          "default": 10043,
+          "description": "Port that CF Companion listens on for incoming problem data (Competitive Companion style payloads)."
+        },
+        "cfCompanion.handle": {
+          "type": "string",
+          "default": "",
+          "description": "Your Codeforces handle, used for the dashboard/analytics."
+        },
+        "cfCompanion.submitCompiler.cpp": {
+          "type": "string",
+          "default": "GNU G++17 7.3.0",
+          "description": "Default compiler option to select on the Codeforces submit page for C++ solutions. Used as a fallback default in the Test panel's compiler dropdown, and when submitting via the editor toolbar."
+        },
+        "cfCompanion.submitCompiler.python": {
+          "type": "string",
+          "default": "PyPy 3.10 (7.3.15, 64bit)",
+          "description": "Default compiler option to select on the Codeforces submit page for Python solutions."
+        },
+        "cfCompanion.submitCompiler.java": {
+          "type": "string",
+          "default": "Java 21 64bit",
+          "description": "Default compiler option to select on the Codeforces submit page for Java solutions."
+        },
+        "cfCompanion.submitDryRun": {
+          "type": "boolean",
+          "default": false,
+          "description": "Fill and attach the file but don't click Submit."
+        },
+        "cfCompanion.cppPath": {
+          "type": "string",
+          "default": "g++",
+          "description": "Path to the C++ compiler used by Run Tests."
+        },
+        "cfCompanion.cppFlags": {
+          "type": "string",
+          "default": "-O2 -std=c++17",
+          "description": "Extra flags passed to the C++ compiler when running tests."
+        },
+        "cfCompanion.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Path to the Python interpreter used by Run Tests."
+        },
+        "cfCompanion.javacPath": {
+          "type": "string",
+          "default": "javac",
+          "description": "Path to the Java compiler used by Run Tests."
+        },
+        "cfCompanion.javaPath": {
+          "type": "string",
+          "default": "java",
+          "description": "Path to the Java runtime used by Run Tests."
+        },
+        "cfCompanion.testTimeoutMs": {
+          "type": "number",
+          "default": 3000,
+          "description": "Per-test execution timeout in milliseconds, used by Run Tests."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@types/ws": "^8.5.10",
+    "katex": "^0.16.11",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "markdown-it": "^14.1.0",
+    "ws": "^8.18.0"
+  }
+}

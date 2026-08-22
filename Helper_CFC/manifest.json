@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "CFC Helper",
+  "version": "1.0",
+  "description": "Extract Codeforces contest/problem data and send it to a local WebSocket server; also polls for and performs Submit jobs from the VS Code extension.",
+  "permissions": ["scripting", "activeTab"],
+  "host_permissions": [
+    "https://codeforces.com/*",
+    "http://localhost:10043/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://codeforces.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Parse Problem"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src ws://localhost:10043 http://localhost:10043"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
