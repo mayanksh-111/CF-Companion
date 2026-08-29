@@ -7,16 +7,16 @@ Version 0.1.2 · Requires VS Code 1.85.0 or later
 ## Features
 
 **One-click problem parsing**
-Browse to a problem on Codeforces and send it straight to VS Code (Competitive Companion-style). CF Companion listens on a local WebSocket/HTTP port and creates a ready-to-code solution file for you, sample tests included.
+Browse to a problem on Codeforces and send it straight to VS Code. CF Companion listens on a local WebSocket/HTTP port and creates a ready-to-code solution file for you, sample tests included.
 
 **Run tests instantly**
 Compile and run your solution against every sample (and custom) test case with a click. Results stream in per-test as they finish, with pass/fail, timing, and full stdout/stderr. Supports C++, Python, and Java out of the box.
 
 **Custom test cases**
-Add your own edge cases alongside the official samples. Edit, duplicate, or delete them right from the Tests panel.
+Add your own test cases alongside the official samples. Edit, duplicate, or delete them right from the Tests panel.
 
 **Submit from the editor**
-Submit your open solution directly to Codeforces, with compiler selection, dry-run mode, and account verification handled for you via a lightweight browser companion.
+Submit your open solution directly to Codeforces, with compiler selection, and account verification handled for you via a lightweight browser companion.
 
 **Analytics dashboard**
 Open the dashboard for a full breakdown of your CF journey:
