@@ -215,7 +215,7 @@ export class TestPanel {
   }
 
   static show(): TestPanel {
-    if (!TestPanel.host || !TestPanel.current) {
+    if(!TestPanel.host || !TestPanel.current) {
       throw new Error("TestPanel.configureHost(host) must be called during activation before show().");
     }
     TestPanel.host.reveal("tests");
@@ -227,7 +227,7 @@ export class TestPanel {
   }
 
   static close(): void {
-    if (!TestPanel.host || !TestPanel.current) return;
+    if(!TestPanel.host || !TestPanel.current) return;
     TestPanel.current.state = undefined;
     TestPanel.host.setTabContent("tests", TestPanel.current.renderCompilerNotConfiguredInline("No problem open."));
   }
@@ -242,7 +242,7 @@ export class TestPanel {
     const cameFromTestList = !!this.state?.compilerConfigured && !!this.state?.tests.length;
     const goingToTestList = state.compilerConfigured && state.tests.length > 0;
 
-    if (!cameFromTestList || !goingToTestList) {
+    if(!cameFromTestList || !goingToTestList) {
       this.setState(state);
       return;
     }
@@ -260,11 +260,10 @@ export class TestPanel {
   }
 
   patchResult(result: TestResult): void {
-    if (!this.state) return;
+    if(!this.state) return;
     this.state.results.set(result.testId, result);
     const test = this.state.tests.find((t) => t.id === result.testId);
-    const diffHtml =
-      result.status === "fail" && test ? renderDiffLines(test.expectedOutput, result.actualOutput ?? "") : undefined;
+    const diffHtml = result.status === "fail" && test ? renderDiffLines(test.expectedOutput, result.actualOutput ?? "") : undefined;
     TestPanel.host?.postToTab("tests", { command: "resultUpdate", result: serializeResult(result), diffHtml });
   }
 
@@ -273,41 +272,33 @@ export class TestPanel {
   }
 
   updateCompilers(compilers: string[]): void {
-    if (!this.state || !compilers.length) return;
+    if(!this.state || !compilers.length) return;
     this.state.availableCompilers = compilers;
-    if (!compilers.includes(this.state.selectedCompiler)) {
+    if(!compilers.includes(this.state.selectedCompiler)) {
       this.state.selectedCompiler = compilers[0];
     }
     TestPanel.host?.postToTab("tests", {
       command: "compilerListUpdate",
       compilers,
-      options: compilers
-        .map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`)
-        .join(""),
+      options: compilers.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join(""),
     });
   }
 
   private renderCompilerOptions(state: TestPanelState): string {
     const list = state.availableCompilers.length ? state.availableCompilers : [state.selectedCompiler];
     return list
-      .map(
-        (c) =>
-          `<option value="${escapeHtml(c)}" ${c === state.selectedCompiler ? "selected" : ""}>${escapeHtml(c)}</option>`
-      )
-      .join("");
+      .map((c) => `<option value="${escapeHtml(c)}" ${c === state.selectedCompiler ? "selected" : ""}>${escapeHtml(c)}</option>`).join("");
   }
 
   private render(state: TestPanelState): string {
-    if (!state.compilerConfigured) {
+    if(!state.compilerConfigured){
       return this.renderCompilerNotConfiguredInline();
     }
 
-    if (!state.tests.length) {
+    if(!state.tests.length){
       return this.renderEmptyInline(state);
     }
-
     const rows = state.tests.map((t) => this.renderTestRow(t, state.results.get(t.id))).join("");
-
     return /* html */ `
     <div class="toolbar">
     <div class="test-list" id="testList">${rows}</div>

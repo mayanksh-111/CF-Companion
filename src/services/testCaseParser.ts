@@ -31,12 +31,7 @@ export class TestCaseParser {
     return [...samples, ...custom];
   }
 
-  async addCustomTest(
-    contestId: string,
-    problemCode: string,
-    input: string,
-    expectedOutput: string
-  ): Promise<TestCase> {
+  async addCustomTest(contestId: string, problemCode: string, input: string, expectedOutput: string): Promise<TestCase> {
     const store = await this.readStore();
     const key = `${contestId}/${problemCode}`;
     const list = store[key] ?? [];
@@ -77,11 +72,12 @@ export class TestCaseParser {
   }
 
   private async readStore(): Promise<CustomTestStore> {
-    if (this.cache) return this.cache;
-    try {
+    if(this.cache) return this.cache;
+    try{
       const raw = await vscode.workspace.fs.readFile(this.file);
       this.cache = JSON.parse(Buffer.from(raw).toString("utf8"));
-    } catch {
+    }
+    catch{
       this.cache = {};
     }
     return this.cache!;

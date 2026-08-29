@@ -2,24 +2,21 @@ import * as vscode from "vscode";
 import { randomUUID } from "crypto";
 import { ContestKind, IncomingProblem, SubmitJob, SubmitResult } from "./types";
 
-export function resolveSubmitTarget(problem: IncomingProblem): {
-  kind: ContestKind;
-  submitUrl: string;
-} {
+export function resolveSubmitTarget(problem: IncomingProblem): {kind: ContestKind; submitUrl: string;} {
   const url = problem.url ?? "";
 
   const gymMatch = url.match(/codeforces\.com\/gym\/(\d+)/i);
-  if (gymMatch) {
+  if(gymMatch){
     return { kind: "gym", submitUrl: `https://codeforces.com/gym/${gymMatch[1]}/submit` };
   }
 
   const contestMatch = url.match(/codeforces\.com\/contest\/(\d+)/i);
-  if (contestMatch) {
+  if(contestMatch){
     return { kind: "contest", submitUrl: `https://codeforces.com/contest/${contestMatch[1]}/submit` };
   }
 
   const problemsetMatch = url.match(/codeforces\.com\/problemset\/problem\/(\d+)/i);
-  if (problemsetMatch) {
+  if(problemsetMatch){
     return { kind: "problemset", submitUrl: `https://codeforces.com/problemset/submit` };
   }
 
@@ -36,7 +33,7 @@ export class SubmitJobQueue implements vscode.Disposable {
   private readonly waiters = new Map<string, (result: SubmitResult) => void>();
   private readonly output: vscode.OutputChannel;
 
-  constructor() {
+  constructor(){
     this.output = vscode.window.createOutputChannel("CF Companion: Submit");
   }
 
@@ -45,10 +42,8 @@ export class SubmitJobQueue implements vscode.Disposable {
   }
 
   enqueue(job: SubmitJob, timeoutMs = 20_000): Promise<SubmitResult> {
-    if (this.hasPendingJob) {
-      return Promise.reject(
-        new Error("A submission is already in progress. Please wait for it to finish.")
-      );
+    if(this.hasPendingJob){
+      return Promise.reject(new Error("A submission is already in progress. Please wait for it to finish."));
     }
 
     this.pending = job;
@@ -58,7 +53,7 @@ export class SubmitJobQueue implements vscode.Disposable {
     return new Promise<SubmitResult>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.waiters.delete(job.jobId);
-        if (this.pending?.jobId === job.jobId) {
+        if(this.pending?.jobId === job.jobId){
           this.pending = undefined;
           this.claimedAt = undefined;
         }
@@ -77,11 +72,11 @@ export class SubmitJobQueue implements vscode.Disposable {
   }
 
   takeNextJob(): SubmitJob | undefined {
-    if (!this.pending) {
+    if(!this.pending){
       return undefined;
     }
     const now = Date.now();
-    if (this.claimedAt !== undefined && now - this.claimedAt < SubmitJobQueue.CLAIM_GRACE_MS) {
+    if(this.claimedAt !== undefined && now - this.claimedAt < SubmitJobQueue.CLAIM_GRACE_MS){
       return undefined;
     }
     this.claimedAt = now;
@@ -93,14 +88,12 @@ export class SubmitJobQueue implements vscode.Disposable {
   reportResult(result: SubmitResult): boolean {
     const waiter = this.waiters.get(result.jobId);
     this.waiters.delete(result.jobId);
-    if (this.pending?.jobId === result.jobId) {
+    if(this.pending?.jobId === result.jobId){
       this.pending = undefined;
       this.claimedAt = undefined;
     }
-    this.output.appendLine(
-      `Job ${result.jobId} result: ${result.ok ? "OK" : "FAILED"} — ${result.message}`
-    );
-    if (!waiter) {
+    this.output.appendLine(`Job ${result.jobId} result: ${result.ok ? "OK" : "FAILED"} — ${result.message}`);
+    if(!waiter){
       // Result arrived after we'd already timed out / given up on it —
       // still worth logging, but there's no promise left to resolve.
       return false;

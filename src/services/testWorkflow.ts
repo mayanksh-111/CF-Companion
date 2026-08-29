@@ -24,10 +24,7 @@ export class TestWorkflow {
 
   private compilersFor(language: LanguageId): { available: string[]; selected: string } {
     const available = this.getCompilers();
-    const selected =
-      this.selectedCompiler && available.includes(this.selectedCompiler)
-        ? this.selectedCompiler
-        : getDefaultSubmitCompiler(language);
+    const selected = this.selectedCompiler && available.includes(this.selectedCompiler) ? this.selectedCompiler : getDefaultSubmitCompiler(language);
     this.selectedCompiler = selected;
     return { available, selected };
   }
@@ -58,25 +55,24 @@ export class TestWorkflow {
       selectedCompiler: selected,
     };
 
-    if (wasAlreadyOpen) {
+    if(wasAlreadyOpen){
       panel.patchProblem(nextState);
-    } else {
+    } 
+    else{
       panel.setState(nextState);
     }
   }
 
   async saveSolutionIfDirty(): Promise<void> {
-    if (!this.currentSolution) return;
-    const doc = vscode.workspace.textDocuments.find(
-      (d) => d.uri.toString() === this.currentSolution!.toString()
-    );
-    if (doc && doc.isDirty) {
+    if(!this.currentSolution) return;
+    const doc = vscode.workspace.textDocuments.find((d) => d.uri.toString() === this.currentSolution!.toString());
+    if(doc && doc.isDirty){
       await doc.save();
     }
   }
 
   async run(testId?: string): Promise<void> {
-    if (!this.currentProblem || !this.currentLanguage || !this.currentSolution) {
+    if(!this.currentProblem || !this.currentLanguage || !this.currentSolution) {
       vscode.window.showWarningMessage("CF Companion: open a problem's tests before running them.");
       return;
     }
@@ -85,11 +81,10 @@ export class TestWorkflow {
 
     const allTests = await this.parser.getAllTests(this.currentProblem);
     const tests = testId ? allTests.filter((t) => t.id === testId) : allTests;
-    if (testId && !tests.length) return; // stale id (e.g. test was deleted mid-run)
+    if(testId && !tests.length) return; // stale id (e.g. test was deleted mid-run)
 
     const panel = TestPanel.show();
-
-    if (!testId) {
+    if(!testId){
       const { available, selected } = this.compilersFor(this.currentLanguage);
       panel.setState({
         problem: this.currentProblem,
@@ -101,11 +96,9 @@ export class TestWorkflow {
       });
     }
 
-    if (!isCompilerConfigured(this.currentLanguage)) return;
+    if(!isCompilerConfigured(this.currentLanguage)) return;
 
-    await this.runner.runAll(this.currentSolution, this.currentLanguage, tests, (result: TestResult) => {
-      panel.patchResult(result);
-    });
+    await this.runner.runAll(this.currentSolution, this.currentLanguage, tests, (result: TestResult) => {panel.patchResult(result); });
 
   }
   async saveNewTest(input: string, expectedOutput: string): Promise<void> {
@@ -122,7 +115,7 @@ export class TestWorkflow {
   }
 
   async updateTest(testId: string, input: string, expectedOutput: string): Promise<void> {
-    if (!this.currentProblem) return;
+    if(!this.currentProblem) return;
 
     await this.parser.updateCustomTest(
       this.currentProblem.contest_id,
@@ -136,13 +129,13 @@ export class TestWorkflow {
   }
 
   async deleteCustomTest(testId: string): Promise<void> {
-    if (!this.currentProblem) return;
+    if(!this.currentProblem) return;
     await this.parser.deleteCustomTest(this.currentProblem.contest_id, this.currentProblem.problem_code, testId);
     await this.refreshPanel();
   }
 
   private async refreshPanel(): Promise<void> {
-    if (!this.currentProblem) return;
+    if(!this.currentProblem) return;
     const tests = await this.parser.getAllTests(this.currentProblem);
     const { available, selected } = this.compilersFor(this.currentLanguage ?? "cpp");
     TestPanel.show().setState({
@@ -156,7 +149,7 @@ export class TestWorkflow {
   }
 
   refreshCompilers(compilers: string[]): void {
-    if (!TestPanel.isOpen) return;
+    if(!TestPanel.isOpen) return;
     TestPanel.show().updateCompilers(compilers);
   }
 

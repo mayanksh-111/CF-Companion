@@ -2,7 +2,7 @@ import { CfRatingChange } from "../../cfApi";
 import { escapeAttr, escapeHtml, getRatingHex } from "./shared";
 
 export function buildContestList(history: CfRatingChange[]): string {
-  if (!history.length) {
+  if(!history.length){
     return `<div class="empty-card">No rated contests yet.</div>`;
   }
 

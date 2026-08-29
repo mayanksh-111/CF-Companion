@@ -65,18 +65,14 @@ export class SidebarPanel implements vscode.WebviewViewProvider, SidebarHost {
     this.nonce = getNonce();
     webviewView.webview.options = { enableScripts: true, localResourceRoots: [] };
 
-    webviewView.onDidDispose(() => {
-      this.view = undefined;
-    }, null, this.disposables);
-
+    webviewView.onDidDispose(() => {this.view = undefined; }, null, this.disposables);
     webviewView.webview.onDidReceiveMessage((msg) => this.handleMessage(msg), null, this.disposables);
-
     webviewView.webview.html = this.renderShell();
 
-    for (const { tabId, message } of this.pendingMessages.splice(0)) {
+    for(const { tabId, message } of this.pendingMessages.splice(0)){
       webviewView.webview.postMessage({ tab: tabId, ...message });
     }
-    if (this.pendingActiveTab) {
+    if(this.pendingActiveTab){
       webviewView.webview.postMessage({ tab: "__shell__", command: "switchTab", tabId: this.pendingActiveTab });
       this.pendingActiveTab = undefined;
     }
@@ -88,7 +84,7 @@ export class SidebarPanel implements vscode.WebviewViewProvider, SidebarHost {
 
   async saveHandle(trimmed: string): Promise<void> {
     const current = vscode.workspace.getConfiguration().get<string>("cfCompanion.handle", "");
-    if (current && current !== trimmed) {
+    if(current && current !== trimmed){
       invalidateSubmissionsCache(current);
     }
 
@@ -100,47 +96,40 @@ export class SidebarPanel implements vscode.WebviewViewProvider, SidebarHost {
   }
 
   private handleMessage(msg: any): void {
-    if (!msg || typeof msg !== "object") return;
-    if (msg.command === "openDashboard") {
+    if(!msg || typeof msg !== "object") return;
+    if(msg.command === "openDashboard"){
       void vscode.commands.executeCommand("cfCompanion.openDashboard");
       return;
     }
-    if (msg.command === "openUrl" && typeof msg.url === "string") {
+    if(msg.command === "openUrl" && typeof msg.url === "string"){
       void vscode.env.openExternal(vscode.Uri.parse(msg.url));
       return;
     }
-
-    if (msg.command === "openProblem" && typeof msg.contestId === "string" && typeof msg.problemCode === "string") {
+    if(msg.command === "openProblem" && typeof msg.contestId === "string" && typeof msg.problemCode === "string"){
       void vscode.commands.executeCommand("cfCompanion.openProblem", msg.contestId, msg.problemCode);
       return;
     }
-
-    if (msg.command === "createSolution" && typeof msg.contestId === "string" && typeof msg.problemCode === "string") {
+    if(msg.command === "createSolution" && typeof msg.contestId === "string" && typeof msg.problemCode === "string"){
       void vscode.commands.executeCommand("cfCompanion.createSolution", { meta: { contestId: msg.contestId, problemCode: msg.problemCode } });
       return;
     }
-
-    if (msg.command === "openSolution" && typeof msg.contestId === "string" && typeof msg.problemCode === "string") {
+    if(msg.command === "openSolution" && typeof msg.contestId === "string" && typeof msg.problemCode === "string"){
       void vscode.commands.executeCommand("cfCompanion.openSolution", { meta: { contestId: msg.contestId, problemCode: msg.problemCode } });
       return;
     }
-
-    if (msg.command === "deleteContest" && typeof msg.contestId === "string") {
+    if(msg.command === "deleteContest" && typeof msg.contestId === "string"){
       void vscode.commands.executeCommand("cfCompanion.deleteContest", { contestId: msg.contestId });
       return;
     }
-
-    if (msg.command === "refreshContests") {
+    if(msg.command === "refreshContests"){
       void this.refreshContestsTab();
       return;
     }
-
-    if (msg.command === "setHandle") {
+    if(msg.command === "setHandle"){
       void vscode.commands.executeCommand("cfCompanion.setHandle");
       return;
     }
-
-    if (msg.tab && this.tabMessageHandlers.has(msg.tab)) {
+    if(msg.tab && this.tabMessageHandlers.has(msg.tab)){
       this.tabMessageHandlers.get(msg.tab)!(msg);
     }
   }

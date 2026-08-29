@@ -8,7 +8,7 @@ const PAD_TOP = 24;
 const PAD_BOTTOM = 32;
 
 export function buildRatingGraph(history: CfRatingChange[]): string {
-  if (!history.length) {
+  if(!history.length) {
     return `<div class="empty-card">No rated contests yet — your rating graph will appear here once you compete.</div>`;
   }
 
@@ -20,10 +20,8 @@ export function buildRatingGraph(history: CfRatingChange[]): string {
   const plotW = WIDTH - PAD_X * 2;
   const plotH = HEIGHT - PAD_TOP - PAD_BOTTOM;
 
-  const xFor = (i: number) =>
-    history.length === 1 ? PAD_X + plotW / 2 : PAD_X + (i / (history.length - 1)) * plotW;
-  const yFor = (rating: number) =>
-    PAD_TOP + plotH - ((rating - minRating) / span) * plotH;
+  const xFor = (i: number) => history.length === 1 ? PAD_X + plotW / 2 : PAD_X + (i / (history.length - 1)) * plotW;
+  const yFor = (rating: number) => PAD_TOP + plotH - ((rating - minRating) / span) * plotH;
 
   const bands: { from: number; to: number; color: string }[] = [
     { from: 0, to: 1200, color: "#8a8a8a" },
@@ -109,8 +107,8 @@ function buildGridLines(
 
 function niceStep(range: number): number {
   const candidates = [50, 100, 200, 300, 400, 500, 1000];
-  for (const c of candidates) {
-    if (range / c <= 6) return c;
+  for(const c of candidates) {
+    if(range / c <= 6) return c;
   }
   return 1000;
 }

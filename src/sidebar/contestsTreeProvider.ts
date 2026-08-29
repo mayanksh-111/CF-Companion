@@ -27,11 +27,8 @@ export class ContestsTreeProvider implements vscode.TreeDataProvider<TreeNode> {
   }
 
   getTreeItem(element: TreeNode): vscode.TreeItem {
-    if (element.kind === "contest") {
-      const item = new vscode.TreeItem(
-        `Contest ${element.contestId}`,
-        vscode.TreeItemCollapsibleState.Collapsed
-      );
+    if(element.kind === "contest") {
+      const item = new vscode.TreeItem(`Contest ${element.contestId}`, vscode.TreeItemCollapsibleState.Collapsed);
       item.iconPath = new vscode.ThemeIcon("folder");
       item.contextValue = "contest";
       item.description = `${element.problems.length} problem${element.problems.length === 1 ? "" : "s"}`;
@@ -43,30 +40,24 @@ export class ContestsTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     item.iconPath = new vscode.ThemeIcon("symbol-event");
     item.description = p.tags.slice(0, 3).join(", ");
     item.contextValue = "problem";
-    item.command = {
-      command: "cfCompanion.openProblem",
-      title: "Open Problem",
-      arguments: [p.contestId, p.problemCode],
-    };
+    item.command = {command: "cfCompanion.openProblem", title: "Open Problem", arguments: [p.contestId, p.problemCode]};
     return item;
   }
 
   async getChildren(element?: TreeNode): Promise<TreeNode[]> {
     const index = await this.storage.getIndex();
-
-    if (!element) {
+    if(!element){
       return Object.values(index)
         .sort((a, b) => Number(b.contestId) - Number(a.contestId))
         .map((entry) => new ContestNode(entry.contestId, entry.problems));
     }
 
-    if (element.kind === "contest") {
+    if(element.kind === "contest"){
       return element.problems
         .slice()
         .sort((a, b) => a.problemCode.localeCompare(b.problemCode))
         .map((p) => new ProblemNode(p));
     }
-
     return [];
   }
 }

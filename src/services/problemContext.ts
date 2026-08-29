@@ -20,25 +20,18 @@ export class ProblemContextService {
   async resolve(document?: vscode.TextDocument): Promise<ResolvedContext | undefined> {
     const doc = document ?? vscode.window.activeTextEditor?.document;
     const baseDir = this.getBaseDir;
-    if (!doc || doc.uri.scheme !== "file") {
+    if(!doc || doc.uri.scheme !== "file") {
       return undefined;
     }
 
     const language = detectLanguageFromExtension(doc.uri.fsPath);
-    if (!language) {
-      return undefined;
-    }
+    if(!language) { return undefined; }
 
     const meta = await this.solutions.readMeta(doc.uri,baseDir());
-    if (!meta) {
-      return undefined;
-    }
+    if(!meta){ return undefined; }
 
     const problem = await this.storage.loadProblem(meta.contestId, meta.problemCode);
-    if (!problem) {
-      return undefined;
-    }
-
+    if(!problem){ return undefined; }
     return { problem, language: meta.language, solutionUri: doc.uri };
   }
 }

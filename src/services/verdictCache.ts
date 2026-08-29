@@ -14,7 +14,6 @@ export interface StoredVerdict {
 
 // handle (lowercased) -> "contestId/problemCode" -> verdict
 type VerdictStore = Record<string, Record<string, StoredVerdict>>;
-
 let memState: vscode.Memento | undefined;
 let output: vscode.OutputChannel | undefined;
 
@@ -48,11 +47,7 @@ function isBetter(candidate: string, existing: string | undefined): boolean {
   return true;
 }
 
-export function getStoredVerdict(
-  handle: string,
-  contestId: string,
-  problemCode: string,
-): StoredVerdict | undefined {
+export function getStoredVerdict(handle: string, contestId: string, problemCode: string,): StoredVerdict | undefined {
   const store = readStore();
   return store[handle.toLowerCase()]?.[key(contestId, problemCode)];
 }
@@ -61,11 +56,7 @@ export function isUncached(handle: string, contestId: string, problemCode: strin
   return getStoredVerdict(handle, contestId, problemCode) === undefined;
 }
 
-export function getResolvedStatus(
-  handle: string,
-  contestId: string,
-  problemCode: string,
-): ProblemStatus {
+export function getResolvedStatus(handle: string, contestId: string, problemCode: string): ProblemStatus {
   const stored = getStoredVerdict(handle, contestId, problemCode);
   if (!stored) return "Not Attempted";
   return formatVerdict(stored.verdict) as ProblemStatus;
@@ -83,7 +74,7 @@ async function setVerdict(
   const k = key(contestId, problemCode);
   const existing = store[h]?.[k];
 
-  if (!isBetter(verdict, existing?.verdict)) {
+  if(!isBetter(verdict, existing?.verdict)){
     return store;
   }
 
@@ -94,17 +85,12 @@ async function setVerdict(
 
 export type { ScrapedSubmissionRow };
 
-export async function ingestScrapedSubmissions(
-  handle: string,
-  rows: ScrapedSubmissionRow[],
-): Promise<void> {
-  if (!rows.length) return;
-
+export async function ingestScrapedSubmissions(handle: string, rows: ScrapedSubmissionRow[]): Promise<void> {
+  if(!rows.length) return;
   let store = readStore();
-
   const ordered = [...rows].sort((a, b) => (a.submissionTimeMs ?? 0) - (b.submissionTimeMs ?? 0));
 
-  for (const row of ordered) {
+  for(const row of ordered){
     store = await setVerdict(
       store,
       handle,
@@ -133,16 +119,13 @@ export async function recordVerdict(
   await writeStore(store);
 }
 
-export async function syncVerdictsFromSubmissions(
-  handle: string,
-  submissions: CfSubmission[],
-): Promise<void> {
+export async function syncVerdictsFromSubmissions(handle: string, submissions: CfSubmission[]): Promise<void> {
   let store = readStore();
 
-  for (let i = submissions.length - 1; i >= 0; i--) {
+  for(let i = submissions.length - 1; i >= 0; i--){
     const s = submissions[i];
     const contestId = s.problem.contestId?.toString();
-    if (!contestId || !s.verdict) continue;
+    if(!contestId || !s.verdict) continue;
 
     store = await setVerdict(
       store,
@@ -153,6 +136,5 @@ export async function syncVerdictsFromSubmissions(
       s.problem.name,
     );
   }
-
   await writeStore(store);
 }

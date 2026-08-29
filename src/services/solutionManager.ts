@@ -6,25 +6,18 @@ import { getSolutionTemplate } from "./languageConfig";
 const META_SUFFIX = ".cph-meta.json";
 
 export class SolutionManager {
-  async createSolution(
-    problem: IncomingProblem,
-    language: LanguageId,
-    baseDir: vscode.Uri
-  ): Promise<vscode.Uri> {
+  async createSolution(problem: IncomingProblem, language: LanguageId, baseDir: vscode.Uri): Promise<vscode.Uri> {
     const template = getSolutionTemplate(language);
     const safeCode = `${problem.contest_id}${problem.problem_code}`.replace(/[^a-zA-Z0-9_-]/g, "_");
 
-    const solutionUri =
-      language === "java"
-        ? vscode.Uri.joinPath(baseDir, safeCode, "Solution.java")
-        : vscode.Uri.joinPath(baseDir, `${safeCode}${path.extname(template.fileName)}`);
+    const solutionUri = language === "java" ? vscode.Uri.joinPath(baseDir, safeCode, "Solution.java") : vscode.Uri.joinPath(baseDir, `${safeCode}${path.extname(template.fileName)}`);
 
-    if (language === "java") {
+    if(language === "java"){
       await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(baseDir, safeCode));
     }
 
     const exists = await this.fileExists(solutionUri);
-    if (!exists) {
+    if(!exists){
       await vscode.workspace.fs.writeFile(solutionUri, Buffer.from(template.content, "utf8"));
     }
 
@@ -35,18 +28,17 @@ export class SolutionManager {
       language,
       createdAt: Date.now(),
     };
-    
     await this.writeMeta(solutionUri, meta, baseDir);
-
     return solutionUri;
   }
 
   async readMeta(solutionUri: vscode.Uri, baseDir: vscode.Uri): Promise<SolutionMeta | undefined> {
     const metaUri = this.metaUriFor(solutionUri, baseDir);
-    try {
+    try{
       const raw = await vscode.workspace.fs.readFile(metaUri);
       return JSON.parse(Buffer.from(raw).toString("utf8"));
-    } catch {
+    }
+    catch{
       return undefined;
     }
   }
@@ -64,10 +56,11 @@ export class SolutionManager {
   }
 
   private async fileExists(uri: vscode.Uri): Promise<boolean> {
-    try {
+    try{
       await vscode.workspace.fs.stat(uri);
       return true;
-    } catch {
+    } 
+    catch{
       return false;
     }
   }

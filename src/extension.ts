@@ -1,20 +1,10 @@
 import * as vscode from "vscode";
 import { ProblemServer, IncomingSubmissionsScrape } from "./server";
 import { ProblemStorage} from "./storage";
-import {
-    ProblemPanel,
-    ProblemStatus
-} from "./panels/problemPanel";
+import { ProblemPanel, ProblemStatus } from "./panels/problemPanel";
 import { SidebarPanel, SIDEBAR_VIEW_ID } from "./panels/sidebarPanel";
 import { DashboardPanel } from "./panels/dashboardPanel";
-import {
-    initVerdictCache,
-    isUncached,
-    recordVerdict,
-    getResolvedStatus,
-    ingestScrapedSubmissions,
-} from "./services/verdictCache";
-import { fetchUserSubmissions } from "./cfApi";
+import { initVerdictCache, getResolvedStatus, ingestScrapedSubmissions } from "./services/verdictCache";
 import { IncomingProblem, LanguageId } from "./types";
 import { SubmitJobQueue, buildSubmitJob } from "./cfSubmit";
 import { SolutionManager } from "./services/solutionManager";
@@ -25,92 +15,28 @@ import { TestWorkflow } from "./services/testWorkflow";
 import { TestPanel } from "./panels/testPanel";
 import { FALLBACK_COMPILERS, getDefaultSubmitCompiler } from "./services/languageConfig";
 
-const UNCACHED_LOOKUP_COUNT = 500; 
 function resolveProblemStatus(problem: IncomingProblem): ProblemStatus {
-    const handle = vscode.workspace
-        .getConfiguration()
-        .get("cfCompanion.handle", "");
-
-    if (!handle) {
-        return "Not Attempted";
-    }
+    const handle = vscode.workspace.getConfiguration().get("cfCompanion.handle", "");
+    if(!handle) return "Not Attempted";
 
     return getResolvedStatus(handle, problem.contest_id, problem.problem_code);
 }
 
-async function lookupAndCacheVerdict(problem: IncomingProblem): Promise<void> {
-    const handle = vscode.workspace
-        .getConfiguration()
-        .get<string>("cfCompanion.handle", "");
-
-    if (!handle) {
-        return;
-    }
-
-    if (!isUncached(handle, problem.contest_id, problem.problem_code)) {
-        return; // already know this one — no API call needed
-    }
-
-    try {
-        const submissions = await fetchUserSubmissions(handle, UNCACHED_LOOKUP_COUNT);
-
-        const match = submissions.find((s) => {
-            const sameId =
-                s.problem.contestId?.toString() === problem.contest_id &&
-                s.problem.index === problem.problem_code;
-            const sameName =
-                problem.problem_name !== undefined &&
-                s.problem.name.trim().toLowerCase() === problem.problem_name.trim().toLowerCase();
-            return sameId || sameName;
-        });
-
-        if (match?.verdict) {
-            await recordVerdict(
-                handle,
-                problem.contest_id,
-                problem.problem_code,
-                match.verdict,
-                problem.problem_name,
-            );
-        }
-    } catch (err) {
-        console.error(
-            "[CF Companion] Failed to look up verdict for new problem:",
-            err
-        );
-    }
-}
-
 function refreshProblemStatus(problem: IncomingProblem): void {
     const status = resolveProblemStatus(problem);
-
-    ProblemPanel.refreshStatus(
-        problem.contest_id,
-        problem.problem_code,
-        status
-    );
+    ProblemPanel.refreshStatus(problem.contest_id, problem.problem_code, status);
 }
 
 let lastResolvedProblemKey: string | undefined;
 
-export async function activate(
-    context: vscode.ExtensionContext
-): Promise<void> {
-    const statusBar =
-        vscode.window.createStatusBarItem(
-            vscode.StatusBarAlignment.Left,
-            100
-        );
-
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
+    const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left,100);
     context.subscriptions.push(statusBar);
-
-    const storage =
-        new ProblemStorage(context);
+    const storage = new ProblemStorage(context);
 
     await storage.init();
     initVerdictCache(context);
 
-    // ---- CPH-like workflow services ----
     function getSolutionsBaseDir(): vscode.Uri {
         const folder = vscode.workspace.workspaceFolders?.[0];
         if (folder) return folder.uri;
@@ -123,12 +49,11 @@ export async function activate(
     const testRunner = new TestRunner();
     let knownCompilers: string[] = context.globalState.get("cfCompanion.knownCompilers", FALLBACK_COMPILERS);
     const testWorkflow = new TestWorkflow(testParser, testRunner, () => knownCompilers);
-
     {
         const initialEditor = vscode.window.activeTextEditor;
-        if (initialEditor) {
+        if(initialEditor){
             const resolved = await problemContext.resolve(initialEditor.document);
-            if (resolved) {
+            if(resolved){
                 lastResolvedProblemKey = `${resolved.problem.contest_id}/${resolved.problem.problem_code}`;
             }
         }
@@ -150,30 +75,18 @@ export async function activate(
         void vscode.commands.executeCommand("cfCompanion.submitSolution", { compiler });
     };
 
-    async function openSolutionAndTests(
-    problem: IncomingProblem,
-    language: LanguageId,
-    existingUri?: vscode.Uri
-): Promise<void> {
-    const solutionUri =
-        existingUri ??
-        (await solutionManager.createSolution(problem, language, getSolutionsBaseDir()));
+    async function openSolutionAndTests(problem: IncomingProblem, language: LanguageId, existingUri?: vscode.Uri): Promise<void> {
+        const solutionUri = existingUri ?? (await solutionManager.createSolution(problem, language, getSolutionsBaseDir()));
+        await storage.setSolutionPath(problem.contest_id, problem.problem_code, solutionUri.fsPath, language);
+        const doc = await vscode.workspace.openTextDocument(solutionUri);
+        await vscode.window.showTextDocument(doc, { preview: false });
+        await testWorkflow.open(problem, language, solutionUri);
+    }
 
-    await storage.setSolutionPath(problem.contest_id, problem.problem_code, solutionUri.fsPath, language);
-
-    const doc = await vscode.workspace.openTextDocument(solutionUri);
-    await vscode.window.showTextDocument(doc, { preview: false });
-
-    await testWorkflow.open(problem, language, solutionUri);
-}
-
-    context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor(async (editor) => {
-        if (!editor) {
-            return;
-        }
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+        if(!editor) return;
         const resolved = await problemContext.resolve(editor.document);
-        if (!resolved) {
+        if(!resolved){
             TestPanel.close();
             testWorkflow.clear();
             lastResolvedProblemKey = undefined;
@@ -184,8 +97,7 @@ export async function activate(
         ProblemPanel.updateSilently(resolved.problem, context.extensionUri);
         refreshProblemStatus(resolved.problem);
         await testWorkflow.open(resolved.problem, resolved.language, resolved.solutionUri);
-    })
-);
+    }));
 
     const sidebarPanel = new SidebarPanel(context, storage);
     context.subscriptions.push(sidebarPanel);
@@ -204,11 +116,8 @@ export async function activate(
     const submitQueue = new SubmitJobQueue();
     context.subscriptions.push(submitQueue);
 
-    const server =
-        new ProblemServer(submitQueue);
-
+    const server = new ProblemServer(submitQueue);
     context.subscriptions.push(server);
-
     context.subscriptions.push(
         server.onCompilerList((msg) => {
             knownCompilers = msg.compilers;
@@ -217,43 +126,36 @@ export async function activate(
         })
     );
 
-    ProblemPanel.setStatusRefreshHandler(
-        async (problem: IncomingProblem) => {
-            refreshProblemStatus(problem);
-        }
-    );
-
+    ProblemPanel.setStatusRefreshHandler((problem: IncomingProblem) => resolveProblemStatus(problem));
     ProblemPanel.setActionHandler((command, problem, language) => {
-        if (command === "createSolution") {
+        if(command === "createSolution"){
             void openSolutionAndTests(problem, (language as LanguageId) ?? "cpp");
-        } else if (command === "runTests") {
+        } 
+        else if(command === "runTests"){
             void (async () => {
                 const existing = await findExistingSolution(problem);
-                if (!existing) {
-                    vscode.window.showWarningMessage(
-                        "CF Companion: create a solution file for this problem first."
-                    );
+                if(!existing){
+                    vscode.window.showWarningMessage("CF Companion: create a solution file for this problem first.");
                     return;
                 }
                 await openSolutionAndTests(problem, existing.language, existing.uri);
                 await testWorkflow.run();
             })();
-        } else if (command === "submitSolution") {
+        } 
+        else if(command === "submitSolution"){
             void vscode.commands.executeCommand("cfCompanion.submitSolution");
         }
     });
 
     ProblemPanel.setFocusHandler((problem) => {
-    void (async () => {
-        const stored = await storage.getSolutionPath(problem.contest_id, problem.problem_code);
-        if (stored) {
-            await testWorkflow.open(problem, stored.language, vscode.Uri.file(stored.path));
-        }
-    })();
-});
-    async function findExistingSolution(
-        problem: IncomingProblem
-    ): Promise<{ uri: vscode.Uri; language: LanguageId } | undefined> {
+        void(async () => {
+            const stored = await storage.getSolutionPath(problem.contest_id, problem.problem_code);
+            if(stored){
+                await testWorkflow.open(problem, stored.language, vscode.Uri.file(stored.path));
+            }
+        })();
+    });
+    async function findExistingSolution(problem: IncomingProblem): Promise<{ uri: vscode.Uri; language: LanguageId } | undefined> {
         const safeCode = `${problem.contest_id}${problem.problem_code}`.replace(/[^a-zA-Z0-9_-]/g, "_");
         const baseDir = getSolutionsBaseDir();
         const candidates: Array<{ uri: vscode.Uri; language: LanguageId }> = [
@@ -261,61 +163,48 @@ export async function activate(
             { uri: vscode.Uri.joinPath(baseDir, `${safeCode}.py`), language: "python" },
             { uri: vscode.Uri.joinPath(baseDir, safeCode, "Solution.java"), language: "java" },
         ];
-        for (const c of candidates) {
-            try {
+        for(const c of candidates){
+            try{
                 await vscode.workspace.fs.stat(c.uri);
                 return { uri: c.uri, language: c.language };
-            } catch {
+            }
+            catch{
                 /* try next */
             }
         }
         return undefined;
     }
-    function showProblemWithStatus(
-    problem: IncomingProblem,
-    extensionUri: vscode.Uri
-): void {
-    ProblemPanel.show(problem, extensionUri, "Loading");
-    refreshProblemStatus(problem);
-    server.broadcast({
-        type: "problem_loaded",
-        contest_id: problem.contest_id,
-        problem_code: problem.problem_code,
-    });
+    function showProblemWithStatus(problem: IncomingProblem, extensionUri: vscode.Uri): void {
+        ProblemPanel.show(problem, extensionUri, "Loading");
+        refreshProblemStatus(problem);
+        server.broadcast({
+            type: "problem_loaded",
+            contest_id: problem.contest_id,
+            problem_code: problem.problem_code,
+        });
 
-    void (async () => {
-        const stored = await storage.getSolutionPath(problem.contest_id, problem.problem_code);
-        if (!stored) return;
-        const uri = vscode.Uri.file(stored.path);
-        try {
-            await vscode.workspace.fs.stat(uri); // still exists on disk
-            const doc = await vscode.workspace.openTextDocument(uri);
-            await testWorkflow.open(problem, stored.language, uri);
-        } catch {
-            // solution file was moved/deleted — silently skip, statement still shows
-        }
-    })();
-}
+        void(async () => {
+            const stored = await storage.getSolutionPath(problem.contest_id, problem.problem_code);
+            if(!stored) return;
+            const uri = vscode.Uri.file(stored.path);
+            try{
+                await vscode.workspace.fs.stat(uri); // still exists on disk
+                const doc = await vscode.workspace.openTextDocument(uri);
+                await testWorkflow.open(problem, stored.language, uri);
+            } 
+            catch{
+                // solution file was moved/deleted — silently skip, statement still shows
+            }
+        })();
+    }
     server.onProblem(async problem => {
         await storage.saveProblem(problem);
-
-        showProblemWithStatus(
-            problem,
-            context.extensionUri
-        );
-        await lookupAndCacheVerdict(problem);
-        refreshProblemStatus(problem); // pick up whatever lookupAndCacheVerdict just cached, if anything
-
-        vscode.window.setStatusBarMessage(
-            `$(check) Loaded ${problem.contest_id}${problem.problem_code}`,
-            3000
-        );
+        showProblemWithStatus(problem, context.extensionUri);
+        vscode.window.setStatusBarMessage(`$(check) Loaded ${problem.contest_id}${problem.problem_code}`, 3000);
     });
 
     server.onProblemError(err => {
-        vscode.window.showWarningMessage(
-            `CF Companion: failed to extract ${err.url} — ${err.error}`
-        );
+        vscode.window.showWarningMessage(`CF Companion: failed to extract ${err.url} — ${err.error}`);
     });
 
     server.onSubmissionsScrape(async (msg: IncomingSubmissionsScrape) => {
@@ -325,31 +214,26 @@ export async function activate(
             .trim();
 
         const scrapedHandle = (msg.handle ?? "").trim();
-
-        if (!configuredHandle) {
+        if(!configuredHandle){
             console.warn("[CF Companion] Dropped submissions scrape: no handle configured.");
             return;
         }
-        if (!scrapedHandle || scrapedHandle.toLowerCase() !== configuredHandle.toLowerCase()) {
+        if(!scrapedHandle || scrapedHandle.toLowerCase() !== configuredHandle.toLowerCase()){
             console.warn(
                 `[CF Companion] Dropped submissions scrape: scraped handle "${scrapedHandle}" != configured handle "${configuredHandle}".`
             );
             return;
         }
-
         await ingestScrapedSubmissions(configuredHandle, msg.rows);
-
-        for (const row of msg.rows) {
+        
+        for(const row of msg.rows){
             const status = getResolvedStatus(configuredHandle, row.contestId, row.problemCode);
             ProblemPanel.refreshStatus(row.contestId, row.problemCode, status);
         }
     });
 
     server.onContestMetadata(meta => {
-        vscode.window.setStatusBarMessage(
-            `$(sync~spin) Fetching ${meta.problem_count} problems from ${meta.name}…`,
-            4000
-        );
+        vscode.window.setStatusBarMessage(`$(sync~spin) Fetching ${meta.problem_count} problems from ${meta.name}…`,4000);
     });
 
     server.onContestComplete(done => {
@@ -361,96 +245,60 @@ export async function activate(
     });
 
     const startServer = () => {
-        const port =
-            vscode.workspace
-                .getConfiguration()
-                .get(
-                    "cfCompanion.port",
-                    10043
-                );
-
+        const port = vscode.workspace.getConfiguration().get("cfCompanion.port",10043);
         server.start(port);
     };
 
     startServer();
 
-    const broadcastConfiguredHandle = () => {
-        const handle = vscode.workspace
-            .getConfiguration()
-            .get<string>("cfCompanion.handle", "")
-            .trim();
+    const broadcastConfiguredHandle = () => {/////////////////////////////////////
+        const handle = vscode.workspace.getConfiguration().get<string>("cfCompanion.handle", "").trim();
+        console.log("[CFC DEBUG] BROADCASTING HANDLE:", handle);
+        server.broadcast({type: "configured_handle", handle: handle || null});
+    };///////////////////////////////////////////
 
-        server.broadcast({
-            type: "configured_handle",
-            handle: handle || null,
-        });
-    };
+    const requestSubmissionsRescan = () => {////////////////////////
+        const handle = vscode.workspace.getConfiguration().get<string>("cfCompanion.handle", "").trim();
+        console.log("[CFC DEBUG] REQUEST SCRAPE WITH HANDLE:", handle);
+        server.broadcast({type: "request_submissions_scrape", handle: handle || null});
+    };////////////////////////
 
-    const requestSubmissionsRescan = () => {
-        server.broadcast({ type: "request_submissions_scrape" });
-    };
-
-    server.onClientConnected(() => {
+    server.onClientConnected(() => {///////////////////////
+        console.log("[CFC DEBUG] CHROME CLIENT CONNECTED");
         broadcastConfiguredHandle();
+        console.log("[CFC DEBUG] REQUESTING SUBMISSION SCRAPE");
+
         requestSubmissionsRescan();
-    });
+    });////////////////////////
 
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (
-                e.affectsConfiguration(
-                    "cfCompanion.port"
-                )
-            ) {
+            if(e.affectsConfiguration("cfCompanion.port")){
                 startServer();
             }
-
-            if (
-                e.affectsConfiguration(
-                    "cfCompanion.handle"
-                )
-            ) {
+            if(e.affectsConfiguration("cfCompanion.handle")){
                 broadcastConfiguredHandle();
             }
         })
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "cfCompanion.openDashboard",
-            () => {
-                DashboardPanel.show(context);
-            }
-        ),
+        vscode.commands.registerCommand("cfCompanion.openDashboard",() => {
+            DashboardPanel.show(context);
+        }),
 
         vscode.commands.registerCommand(
             "cfCompanion.openProblem",
-            async (
-                contestId?: string,
-                problemCode?: string
-            ) => {
-                if (!contestId || !problemCode) {
+            async (contestId?: string, problemCode?: string) => {
+                if(!contestId || !problemCode){
                     return;
                 }
+                const problem = await storage.loadProblem(contestId, problemCode);
 
-                const problem =
-                    await storage.loadProblem(
-                        contestId,
-                        problemCode
-                    );
-
-                if (!problem) {
-                    vscode.window.showWarningMessage(
-                        `Could not find stored problem ${contestId}${problemCode}.`
-                    );
-
+                if(!problem){vscode.window.showWarningMessage(`Could not find stored problem ${contestId}${problemCode}.`);
                     return;
                 }
-
-                showProblemWithStatus(
-                    problem,
-                    context.extensionUri
-                );
+                showProblemWithStatus(problem, context.extensionUri);
             }
         ),
 
@@ -459,15 +307,10 @@ export async function activate(
             async (node?: { meta?: { contestId?: string; problemCode?: string } }) => {
                 const contestId = node?.meta?.contestId;
                 const problemCode = node?.meta?.problemCode;
-                const problem =
-                    contestId && problemCode
-                        ? await storage.loadProblem(contestId, problemCode)
-                        : ProblemPanel.getActiveProblem();
+                const problem = contestId && problemCode ? await storage.loadProblem(contestId, problemCode) : ProblemPanel.getActiveProblem();
 
-                if (!problem) {
-                    vscode.window.showWarningMessage(
-                        "CF Companion: open a problem first, then run Create Solution."
-                    );
+                if(!problem){
+                    vscode.window.showWarningMessage("CF Companion: open a problem first, then run Create Solution.");
                     return;
                 }
 
@@ -490,21 +333,16 @@ export async function activate(
             async (node?: { meta?: { contestId?: string; problemCode?: string } }) => {
                 const contestId = node?.meta?.contestId;
                 const problemCode = node?.meta?.problemCode;
-                const problem =
-                    contestId && problemCode
-                        ? await storage.loadProblem(contestId, problemCode)
-                        : ProblemPanel.getActiveProblem();
+                const problem = contestId && problemCode ? await storage.loadProblem(contestId, problemCode) : ProblemPanel.getActiveProblem();
 
-                if (!problem) {
+                if(!problem){
                     vscode.window.showWarningMessage("CF Companion: no problem selected.");
                     return;
                 }
 
                 const existing = await findExistingSolution(problem);
-                if (!existing) {
-                    vscode.window.showWarningMessage(
-                        "CF Companion: no solution file exists yet for this problem. Use Create Solution first."
-                    );
+                if(!existing){
+                    vscode.window.showWarningMessage("CF Companion: no solution file exists yet for this problem. Use Create Solution first.");
                     return;
                 }
 
@@ -514,69 +352,46 @@ export async function activate(
 
         vscode.commands.registerCommand("cfCompanion.runTests", async () => {
             const resolved = await problemContext.resolve();
-            if (resolved) {
+            if(resolved){
                 await testWorkflow.open(resolved.problem, resolved.language, resolved.solutionUri);
                 await testWorkflow.run();
                 return;
             }
-
-            if (testWorkflow.activeProblem) {
+            if(testWorkflow.activeProblem){
                 await testWorkflow.run();
                 return;
             }
 
-            vscode.window.showWarningMessage(
-                "CF Companion: open a generated solution file (or run Create Solution) before running tests."
-            );
+            vscode.window.showWarningMessage("CF Companion: open a generated solution file (or run Create Solution) before running tests.");
         }),
 
         vscode.commands.registerCommand("cfCompanion.addCustomTest", async () => {
-            if (!testWorkflow.activeProblem) {
+            if(!testWorkflow.activeProblem){
                 vscode.window.showWarningMessage("CF Companion: open a problem's tests first.");
                 return;
             }
             TestPanel.show().requestNewDraft();
         }),
 
-        vscode.commands.registerCommand(
-            "cfCompanion.refreshContests",
-            () => {
-                void sidebarPanel.refreshContestsTab();
-            }
-        ),
+        vscode.commands.registerCommand("cfCompanion.refreshContests",() => {
+            void sidebarPanel.refreshContestsTab(); 
+        }),
 
         vscode.commands.registerCommand(
             "cfCompanion.setHandle",
             async () => {
-                const current =
-                    vscode.workspace
-                        .getConfiguration()
-                        .get<string>(
-                            "cfCompanion.handle",
-                            ""
-                        );
-
-                const handle =
-                    await vscode.window.showInputBox({
-                        prompt: "Codeforces handle",
-                        value: current
-                    });
-
-                if (handle) {
+                const current = vscode.workspace.getConfiguration().get<string>("cfCompanion.handle","");
+                const handle = await vscode.window.showInputBox({ prompt: "Codeforces handle", value: current });
+                if(handle){
                     await sidebarPanel.saveHandle(handle.trim());
                     DashboardPanel.show(context);
                 }
             }
         ),
 
-        vscode.commands.registerCommand(
-            "cfCompanion.restartServer",
-            () => {
+        vscode.commands.registerCommand("cfCompanion.restartServer",() => {
                 startServer();
-
-                vscode.window.showInformationMessage(
-                    "CF Companion listener restarted."
-                );
+                vscode.window.showInformationMessage("CF Companion listener restarted.");
             }
         ),
 
@@ -586,11 +401,9 @@ export async function activate(
                 const problem =
                     ProblemPanel.getActiveProblem() ??
                     testWorkflow.activeProblem ??
-                    (vscode.window.activeTextEditor
-                        ? (await problemContext.resolve(vscode.window.activeTextEditor.document))?.problem
-                        : undefined);
+                    (vscode.window.activeTextEditor ? (await problemContext.resolve(vscode.window.activeTextEditor.document))?.problem : undefined);
 
-                if (!problem) {
+                if(!problem){
                     vscode.window.showErrorMessage(
                         "CF Companion: couldn't determine which problem to submit against. Open the problem's panel, or a generated solution file, before submitting."
                     );
@@ -599,56 +412,46 @@ export async function activate(
 
                 let solutionDoc: vscode.TextDocument;
                 const activeEditor = vscode.window.activeTextEditor;
-                const activeMatchesProblem =
-                    activeEditor && (await problemContext.resolve(activeEditor.document))?.problem.contest_id === problem.contest_id;
+                const activeMatchesProblem = activeEditor && (await problemContext.resolve(activeEditor.document))?.problem.contest_id === problem.contest_id;
 
-                if (activeMatchesProblem && activeEditor) {
+                if(activeMatchesProblem && activeEditor){
                     solutionDoc = activeEditor.document;
-                } else {
+                } 
+                else{
                     const stored = await storage.getSolutionPath(problem.contest_id, problem.problem_code);
-                    if (!stored) {
-                        vscode.window.showErrorMessage(
-                            "CF Companion: no solution file found for this problem. Create one first."
-                        );
+                    if(!stored){
+                        vscode.window.showErrorMessage("CF Companion: no solution file found for this problem. Create one first.");
                         return;
                     }
-                    try {
+                    try{
                         solutionDoc = await vscode.workspace.openTextDocument(vscode.Uri.file(stored.path));
-                    } catch {
-                        vscode.window.showErrorMessage(
-                            "CF Companion: the solution file could not be found on disk. It may have been moved or deleted."
-                        );
+                    } 
+                    catch{
+                        vscode.window.showErrorMessage("CF Companion: the solution file could not be found on disk. It may have been moved or deleted.");
                         return;
                     }
                 }
-
-                if (solutionDoc.isUntitled) {
-                    vscode.window.showErrorMessage(
-                        "CF Companion: save this file to disk before submitting."
-                    );
+                if(solutionDoc.isUntitled){
+                    vscode.window.showErrorMessage("CF Companion: save this file to disk before submitting.");
                     return;
                 }
-
-                if (solutionDoc.isDirty) {
+                if(solutionDoc.isDirty){
                     await solutionDoc.save();
                 }
 
                 const language = (await problemContext.resolve(solutionDoc))?.language;
                 const config = vscode.workspace.getConfiguration();
-                const compiler =
-                    args?.compiler ?? (language ? getDefaultSubmitCompiler(language) : "GNU G++17 7.3.0");
+                const compiler = args?.compiler ?? (language ? getDefaultSubmitCompiler(language) : "GNU G++17 7.3.0");
                 const dryRun = config.get<boolean>("cfCompanion.submitDryRun", false);
 
                 const expectedHandle = config.get<string>("cfCompanion.handle", "").trim();
-                if (!expectedHandle) {
-                    vscode.window.showErrorMessage(
-                        "CF Companion: set your Codeforces handle (cfCompanion.handle) before submitting — it's used to confirm the browser tab is logged into the right account."
-                    );
+                if(!expectedHandle){
+                    vscode.window.showErrorMessage("CF Companion: set your Codeforces handle (cfCompanion.handle) before submitting — it's used to confirm the browser tab is logged into the right account." );
                     return;
                 }
 
                 let job;
-                try {
+                try{
                     const fileBytes = await vscode.workspace.fs.readFile(solutionDoc.uri);
                     const fileName = solutionDoc.uri.path.split("/").pop() ?? "solution";
                     job = buildSubmitJob(problem, fileName, Buffer.from(fileBytes), {
@@ -656,14 +459,13 @@ export async function activate(
                         dryRun,
                         expectedHandle,
                     });
-                } catch (err: any) {
-                    vscode.window.showErrorMessage(
-                        `CF Companion: could not read the active file — ${err?.message ?? String(err)}`
-                    );
+                } 
+                catch(err: any){
+                    vscode.window.showErrorMessage(`CF Companion: could not read the active file — ${err?.message ?? String(err)}`);
                     return;
                 }
 
-                try {
+                try{
                     const result = await vscode.window.withProgress(
                         {
                             location: vscode.ProgressLocation.Notification,
@@ -672,40 +474,27 @@ export async function activate(
                         () => submitQueue.enqueue(job)
                     );
 
-                    if (result.ok) {
+                    if(result.ok){
                         vscode.window.showInformationMessage(`CF Companion: ${result.message}`);
-                        
-                        if (!dryRun) {
-                            ProblemPanel.refreshStatus(
-                                problem.contest_id,
-                                problem.problem_code,
-                                "Judging…"
-                            );
+                        if(!dryRun){
+                            ProblemPanel.refreshStatus(problem.contest_id,problem.problem_code,"Judging…");
                         }
-                    } else {
+                    } 
+                    else{
                         vscode.window.showErrorMessage(`CF Companion: ${result.message}`);
                     }
-                } catch (err: any) {
-                    vscode.window.showErrorMessage(
-                        `CF Companion: submit failed — ${err?.message ?? String(err)}`
-                    );
+                } 
+                catch(err: any){
+                    vscode.window.showErrorMessage(`CF Companion: submit failed — ${err?.message ?? String(err)}`);
                 }
             }
         ),
 
-        vscode.commands.registerCommand(
-            "cfCompanion.deleteContest",
-            async (
-                node?: {
-                    contestId?: string;
-                }
-            ) => {
-                const contestId =
-                    node?.contestId;
+        vscode.commands.registerCommand("cfCompanion.deleteContest",
+            async(node?: {contestId?: string;}) => {
+                const contestId = node?.contestId;
 
-                if (!contestId) {
-                    return;
-                }
+                if(!contestId) return;
 
                 const confirmed =
                     await vscode.window.showWarningMessage(
@@ -716,18 +505,11 @@ export async function activate(
                         "Delete"
                     );
 
-                if (confirmed !== "Delete") {
+                if(confirmed !== "Delete"){
                     return;
                 }
-
-                await storage.deleteContest(
-                    contestId
-                );
-
-                vscode.window.setStatusBarMessage(
-                    `$(trash) Deleted contest ${contestId}`,
-                    3000
-                );
+                await storage.deleteContest(contestId);
+                vscode.window.setStatusBarMessage(`$(trash) Deleted contest ${contestId}`,3000);
             }
         )
     );

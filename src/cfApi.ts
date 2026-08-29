@@ -35,31 +35,29 @@ export interface CfRatingChange {
 
 function getJson<T>(url: string): Promise<T> {
   return new Promise((resolve, reject) => {
-    https
-      .get(url, { headers: { "User-Agent": "cf-companion-vscode-extension" } }, (res) => {
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
-        res.on("end", () => {
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.status && parsed.status !== "OK") {
-              reject(new Error(parsed.comment ?? "Codeforces API error"));
-              return;
-            }
-            resolve(parsed.result ?? parsed);
-          } catch (e) {
-            reject(e);
+    https.get(url, { headers: { "User-Agent": "cf-companion-vscode-extension" } }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        try{
+          const parsed = JSON.parse(data);
+          if(parsed.status && parsed.status !== "OK"){
+            reject(new Error(parsed.comment ?? "Codeforces API error"));
+            return;
           }
-        });
-      })
-      .on("error", reject);
+          resolve(parsed.result ?? parsed);
+        }
+        catch(e){
+          reject(e);
+        }
+      });
+    })
+    .on("error", reject);
   });
 }
 
 export async function fetchUserInfo(handle: string): Promise<CfUser> {
-  const result = await getJson<any[]>(
-    `https://codeforces.com/api/user.info?handles=${encodeURIComponent(handle)}`
-  );
+  const result = await getJson<any[]>(`https://codeforces.com/api/user.info?handles=${encodeURIComponent(handle)}`);
   const u = result[0];
   return {
     handle: u.handle,
@@ -72,13 +70,9 @@ export async function fetchUserInfo(handle: string): Promise<CfUser> {
 }
 
 export async function fetchUserSubmissions(handle: string, count = 10000, from = 1): Promise<CfSubmission[]> {
-  return getJson<CfSubmission[]>(
-    `https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}&from=${from}&count=${count}`
-  );
+  return getJson<CfSubmission[]>(`https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}&from=${from}&count=${count}`);
 }
 
 export async function fetchUserRatingHistory(handle: string): Promise<CfRatingChange[]> {
-  return getJson<CfRatingChange[]>(
-    `https://codeforces.com/api/user.rating?handle=${encodeURIComponent(handle)}`
-  );
+  return getJson<CfRatingChange[]>(`https://codeforces.com/api/user.rating?handle=${encodeURIComponent(handle)}`);
 }

@@ -15,10 +15,7 @@ export interface LangPathCtx {
   binaryBase: string;
 }
 
-const DEFAULT_SNIPPETS: Record<
-  LanguageId,
-  { fileName: string; content: string }
-> = {
+const DEFAULT_SNIPPETS: Record<LanguageId, { fileName: string; content: string } >= {
   cpp: {
     fileName: "solution.cpp",
     content: `#include <bits/stdc++.h>
@@ -64,27 +61,19 @@ public class Solution {
   },
 };
 
-export function getSolutionTemplate(lang: LanguageId): {
-  fileName: string;
-  content: string;
-} {
+export function getSolutionTemplate(lang: LanguageId): {fileName: string; content: string;} {
   return DEFAULT_SNIPPETS[lang];
 }
 
 function toolPath(setting: string, fallback: string): string {
-  return (
-    vscode.workspace.getConfiguration().get<string>(setting, fallback) ||
-    fallback
-  );
+  return (vscode.workspace.getConfiguration().get<string>(setting, fallback) || fallback);
 }
 
 export function getLanguageConfig(lang: LanguageId): LanguageConfig {
   switch (lang) {
     case "cpp": {
       const compiler = toolPath("cfCompanion.cppPath", "g++");
-      const flags = vscode.workspace
-        .getConfiguration()
-        .get<string>("cfCompanion.cppFlags", "-O2 -std=c++17");
+      const flags = vscode.workspace.getConfiguration().get<string>("cfCompanion.cppFlags", "-O2 -std=c++17");
       return {
         id: "cpp",
         label: "C++",
@@ -139,28 +128,16 @@ const DEFAULT_SUBMIT_COMPILERS: Record<LanguageId, string> = {
 };
 
 export function getDefaultSubmitCompiler(lang: LanguageId): string {
-  return toolPath(
-    `cfCompanion.submitCompiler.${lang}`,
-    DEFAULT_SUBMIT_COMPILERS[lang],
-  );
+  return toolPath(`cfCompanion.submitCompiler.${lang}`, DEFAULT_SUBMIT_COMPILERS[lang]);
 }
 
 export function getConfiguredTimeoutMs(): number {
-  return vscode.workspace
-    .getConfiguration()
-    .get<number>("cfCompanion.testTimeoutMs", 3000);
+  return vscode.workspace.getConfiguration().get<number>("cfCompanion.testTimeoutMs", 3000);
 }
 
-export function detectLanguageFromExtension(
-  filePath: string,
-): LanguageId | undefined {
-  if (
-    filePath.endsWith(".cpp") ||
-    filePath.endsWith(".cc") ||
-    filePath.endsWith(".cxx")
-  )
-    return "cpp";
-  if (filePath.endsWith(".py")) return "python";
-  if (filePath.endsWith(".java")) return "java";
+export function detectLanguageFromExtension(filePath: string,): LanguageId | undefined {
+  if(filePath.endsWith(".cpp") || filePath.endsWith(".cc") || filePath.endsWith(".cxx")) return "cpp";
+  if(filePath.endsWith(".py")) return "python";
+  if(filePath.endsWith(".java")) return "java";
   return undefined;
 }

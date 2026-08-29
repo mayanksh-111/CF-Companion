@@ -1,13 +1,6 @@
 import { CfRatingChange, CfSubmission, CfUser } from "../../cfApi";
 import { renderShell } from "./styles";
-import {
-  escapeAttr,
-  escapeHtml,
-  formatVerdict,
-  getRatingClass,
-  timeAgo,
-  verdictClass,
-} from "./shared";
+import { escapeAttr, escapeHtml, formatVerdict, getRatingClass, timeAgo, verdictClass} from "./shared";
 import { buildHeatmap } from "./heatmap";
 import { buildVerdictStats, countUniqueSolved } from "./verdictStats";
 import { buildTagStats } from "./tagStats";

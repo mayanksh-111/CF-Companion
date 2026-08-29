@@ -4,10 +4,10 @@ import { getRatingHex } from "./shared";
 export function buildDifficultyStats(submissions: CfSubmission[]): string {
   const solvedRatings = new Map<string, number | undefined>();
 
-  for (const submission of submissions) {
-    if (submission.verdict !== "OK") continue;
+  for(const submission of submissions){
+    if(submission.verdict !== "OK") continue;
     const key = `${submission.problem.contestId ?? ""}-${submission.problem.index}`;
-    if (!solvedRatings.has(key)) {
+    if(!solvedRatings.has(key)){
       solvedRatings.set(key, submission.problem.rating);
     }
   }
@@ -15,8 +15,8 @@ export function buildDifficultyStats(submissions: CfSubmission[]): string {
   const buckets = new Map<number, number>();
   let unrated = 0;
 
-  for (const rating of solvedRatings.values()) {
-    if (rating === undefined || rating === null) {
+  for(const rating of solvedRatings.values()){
+    if(rating === undefined || rating === null){
       unrated++;
       continue;
     }
@@ -24,7 +24,7 @@ export function buildDifficultyStats(submissions: CfSubmission[]): string {
     buckets.set(bucket, (buckets.get(bucket) ?? 0) + 1);
   }
 
-  if (!buckets.size && !unrated) {
+  if(!buckets.size && !unrated){
     return `<div class="empty-card">Solve a few problems to see your difficulty spread.</div>`;
   }
 

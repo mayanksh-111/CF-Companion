@@ -7,24 +7,54 @@ let socket = null;
 let queue = [];
 let connecting = null;
 
-function connect() {
-    if (socket && socket.readyState === WebSocket.OPEN) {
+function connect(){
+    if(socket && socket.readyState === WebSocket.OPEN){
         return Promise.resolve();
     }
-    if (connecting) {
+    if(connecting){
         return connecting;
     }
 
     connecting = new Promise((resolve, reject) => {
         socket = new WebSocket(`ws://${WS_HOST}:${WS_PORT}`);
-
         socket.onopen = () => {
             console.log('[CF Companion] Connected');
-            while (queue.length > 0) {
+
+            while(queue.length > 0){
                 socket.send(JSON.stringify(queue.shift()));
             }
+
             connecting = null;
             resolve();
+        };
+
+        socket.onmessage = (event) => {
+            console.log('[CF Companion] WS MESSAGE RECEIVED:',event.data);
+            let msg;
+
+            try{
+                msg = JSON.parse(event.data);
+            } 
+            catch(err){
+                console.error('[CF Companion] Invalid WS message:',event.data);
+                return;
+            }
+
+            console.log('[CF Companion] FORWARDING TO TABS:',msg);
+
+            chrome.tabs.query({}, (tabs) => {
+                for(const tab of tabs){
+                    if(tab.id === undefined){
+                        continue;
+                    }
+                    chrome.tabs.sendMessage(tab.id, {type: 'ws_message', data: msg,}, () => {
+                        if(chrome.runtime.lastError){
+                            // Most tabs will not have the content
+                            // script, so ignore those errors.
+                        }
+                    });
+                }
+            });
         };
 
         socket.onerror = (error) => {
@@ -42,12 +72,13 @@ function connect() {
     return connecting;
 }
 
-async function sendData(data) {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
+async function sendData(data){
+    if(!socket || socket.readyState !== WebSocket.OPEN){
         queue.push(data);
-        try {
+        try{
             await connect();
-        } catch (error) {
+        }
+        catch(error){
             console.error('[CF Companion] Connection failed:', error);
         }
         return;
@@ -55,56 +86,54 @@ async function sendData(data) {
     socket.send(JSON.stringify(data));
 }
 
-async function submitPoll() {
+async function submitPoll(){
     const res = await fetch(`${SUBMIT_BASE_URL}/submit-poll`, { method: 'GET' });
-    if (!res.ok) {
+    if(!res.ok){
         throw new Error(`HTTP ${res.status}`);
     }
     return res.json();
 }
 
-async function submitResult(jobId, ok, message) {
-    try {
+async function submitResult(jobId, ok, message){
+    try{
         await fetch(`${SUBMIT_BASE_URL}/submit-result`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ jobId, ok, message }),
         });
-    } catch (err) {
+    } 
+    catch(err){
         // Best-effort, same as the original.
     }
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (!msg || !msg.type) {
+    if(!msg || !msg.type){
         return false;
     }
 
-    if (msg.type === 'ws_send') {
+    if(msg.type === 'ws_send'){
         sendData(msg.data).then(() => sendResponse({ ok: true }));
         return true;
     }
 
-    if (msg.type === 'submit_poll') {
+    if(msg.type === 'submit_poll'){
         submitPoll()
-            .then((body) => sendResponse({ ok: true, body }))
-            .catch((err) => sendResponse({ ok: false, error: String(err) }));
+        .then((body) => sendResponse({ ok: true, body }))
+        .catch((err) => sendResponse({ ok: false, error: String(err) }));
         return true;
     }
 
-    if (msg.type === 'submit_result') {
-        submitResult(msg.jobId, msg.resultOk, msg.message).then(() =>
-            sendResponse({ ok: true })
-        );
+    if(msg.type === 'submit_result'){
+        submitResult(msg.jobId, msg.resultOk, msg.message).then(() => sendResponse({ ok: true }));
         return true;
     }
-
     return false;
 });
 
 // Toolbar icon click == the page's floating "CFC" button.
 chrome.action.onClicked.addListener((tab) => {
-    if (tab && tab.id !== undefined) {
+    if(tab && tab.id !== undefined){
         chrome.tabs.sendMessage(tab.id, { type: 'run_process_page' });
     }
 });

@@ -1,7 +1,5 @@
 import * as vscode from "vscode";
 import { IncomingProblem } from "../types";
-import { CfSubmission } from "../cfApi";
-import { formatVerdict } from "./dashboard/shared";
 
 export type ProblemStatus =
   | "Accepted"
@@ -26,72 +24,16 @@ const UNCACHED_STATUSES: ReadonlySet<ProblemStatus> = new Set([
 ]);
 
 
-function pickBestStatus(
-  current: ProblemStatus,
-  incoming: ProblemStatus,
-): ProblemStatus {
-  if (current === "Accepted") {
-    return "Accepted";
-  }
-  if (incoming === "Accepted") {
-    return "Accepted";
-  }
-  if (UNCACHED_STATUSES.has(incoming) && !UNCACHED_STATUSES.has(current)) {
-    return current;
-  }
+function pickBestStatus(current: ProblemStatus, incoming: ProblemStatus): ProblemStatus {
+  if(current === "Accepted"){ return "Accepted"; }
+  if(incoming === "Accepted"){ return "Accepted"; }
+  if(UNCACHED_STATUSES.has(incoming) && !UNCACHED_STATUSES.has(current)){ return current; }
   return incoming;
-}
-
-
-export function getProblemStatus(
-  submissions: CfSubmission[],
-  contestId: string,
-  problemCode: string,
-  problemName?: string,
-): ProblemStatus {
-  const normalizedName = problemName?.trim().toLowerCase();
-
-  let mostRecentVerdict: string | undefined;
-  let sawMatch = false;
-
-  for (const submission of submissions) {
-    const submissionContestId = submission.problem.contestId?.toString();
-
-    const sameId =
-      submissionContestId === contestId &&
-      submission.problem.index === problemCode;
-
-    const sameName =
-      normalizedName !== undefined &&
-      submission.problem.name.trim().toLowerCase() === normalizedName;
-
-    if (!sameId && !sameName) {
-      continue;
-    }
-
-    sawMatch = true;
-
-    if (submission.verdict === "OK") {
-      // Accepted Status gets priority
-      return "Accepted";
-    }
-
-    if (mostRecentVerdict === undefined) {
-      mostRecentVerdict = submission.verdict;
-    }
-  }
-
-  if (!sawMatch) {
-    return "Not Attempted";
-  }
-
-  return formatVerdict(mostRecentVerdict as string) as ProblemStatus;
 }
 
 
 export class ProblemPanel {
   private static readonly instances = new Map<string, ProblemPanel>();
-  
   private static activeKey: string | undefined;
   private readonly panel: vscode.WebviewPanel;
   private readonly extensionUri: vscode.Uri;
@@ -99,52 +41,31 @@ export class ProblemPanel {
   private readonly currentProblemKey: string;
   private lastProblem: IncomingProblem | undefined;
   private lastStatus: ProblemStatus = "Not Attempted";
-  
   private statusGeneration = 0;
 
-  private static statusRefreshHandler:
-    | ((problem: IncomingProblem, generation: number) => Promise<void>)
-    | undefined;
+  private static statusRefreshHandler: | ((problem: IncomingProblem) => ProblemStatus) | undefined;
   
   private static actionHandler:
-    | ((
-        command: "createSolution" | "runTests" | "submitSolution",
-        problem: IncomingProblem,
-        language?: string,
-      ) => void)
+    | ((command: "createSolution" | "runTests" | "submitSolution", problem: IncomingProblem, language?: string) => void)
     | undefined;
   private static readonly STATUS_REFRESH_INTERVAL = 15000;
-  private static readonly STATUS_STALE_AFTER = 10000;
 
-  private lastStatusRefresh = 0;
   private statusRefreshTimer?: ReturnType<typeof setInterval>;
   private static focusHandler: ((problem: IncomingProblem) => void) | undefined;
 
   static setFocusHandler(handler: (problem: IncomingProblem) => void): void {
     ProblemPanel.focusHandler = handler;
   }
-  private constructor(
-    panel: vscode.WebviewPanel,
-    extensionUri: vscode.Uri,
-    problemKey: string,
-  ) {
+  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, problemKey: string) {
     this.panel = panel;
     this.extensionUri = extensionUri;
     this.currentProblemKey = problemKey;
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
     this.panel.webview.onDidReceiveMessage(
       (msg) => {
-        if (!this.lastProblem || !ProblemPanel.actionHandler) return;
-        if (
-          msg.command === "createSolution" ||
-          msg.command === "runTests" ||
-          msg.command === "submitSolution"
-        ) {
-          ProblemPanel.actionHandler(
-            msg.command,
-            this.lastProblem,
-            msg.language,
-          );
+        if(!this.lastProblem || !ProblemPanel.actionHandler) return;
+        if(msg.command === "createSolution" || msg.command === "runTests" || msg.command === "submitSolution"){
+          ProblemPanel.actionHandler(msg.command, this.lastProblem, msg.language);
         }
       },
       null,
@@ -152,10 +73,10 @@ export class ProblemPanel {
     );
     this.panel.onDidChangeViewState(
       (e) => {
-        if (e.webviewPanel.active) {
+        if(e.webviewPanel.active) {
           ProblemPanel.activeKey = this.currentProblemKey;
           this.requestStatusRefresh();
-          if (this.lastProblem) ProblemPanel.focusHandler?.(this.lastProblem);
+          if(this.lastProblem) ProblemPanel.focusHandler?.(this.lastProblem);
         }
       },
       null,
@@ -163,71 +84,46 @@ export class ProblemPanel {
     );
 
     this.statusRefreshTimer = setInterval(() => {
-      if (this.panel.active) {
+      if(this.panel.active) {
         this.requestStatusRefresh();
       }
     }, ProblemPanel.STATUS_REFRESH_INTERVAL);
   }
 
-  static setStatusRefreshHandler(
-    handler: (problem: IncomingProblem, generation: number) => Promise<void>,
-  ): void {
+  static setStatusRefreshHandler(handler: (problem: IncomingProblem) => ProblemStatus): void {
     ProblemPanel.statusRefreshHandler = handler;
   }
 
-  static setActionHandler(
-    handler: (
-      command: "createSolution" | "runTests" | "submitSolution",
-      problem: IncomingProblem,
-      language?: string,
-    ) => void,
-  ): void {
-    ProblemPanel.actionHandler = handler;
-  }
+  static setActionHandler(handler: (command: "createSolution" | "runTests" | "submitSolution", problem: IncomingProblem, language? : string) => void): void {
+      ProblemPanel.actionHandler = handler;
+    }
 
   private requestStatusRefresh(): void {
-    if (!this.lastProblem || !ProblemPanel.statusRefreshHandler) {
+    if(!this.lastProblem || !ProblemPanel.statusRefreshHandler) {
       return;
     }
 
-    const isUncached = UNCACHED_STATUSES.has(this.lastStatus);
-
-    if (
-      !isUncached &&
-      Date.now() - this.lastStatusRefresh < ProblemPanel.STATUS_STALE_AFTER
-    ) {
-      return;
+    const status = ProblemPanel.statusRefreshHandler(this.lastProblem);
+    const bestStatus = pickBestStatus(this.lastStatus, status);
+    if(bestStatus !== this.lastStatus) {
+      this.lastStatus = bestStatus;
     }
-
-    this.lastStatusRefresh = Date.now();
-    const generation = this.statusGeneration;
-    ProblemPanel.statusRefreshHandler(this.lastProblem, generation).catch(
-      (err) => {
-        console.error(
-          `[CF Companion] Failed to refresh status for ${this.currentProblemKey}:`,
-          err,
-        );
-      },
-    );
+    this.setStatus(bestStatus);
   }
 
   static getActiveProblem(): IncomingProblem | undefined {
-    if (!ProblemPanel.activeKey) {
+    if(!ProblemPanel.activeKey) {
       return undefined;
     }
     return ProblemPanel.instances.get(ProblemPanel.activeKey)?.lastProblem;
   }
 
-  static show(
-    problem: IncomingProblem,
-    extensionUri: vscode.Uri,
-    status: ProblemStatus = "Not Attempted",
-  ): number {
+  static show(problem: IncomingProblem, extensionUri: vscode.Uri, status: ProblemStatus = "Not Attempted"): number {
     const key = `${problem.contest_id}/${problem.problem_code}`;
     const column = vscode.window.activeTextEditor?.viewColumn;
 
     const existing = ProblemPanel.instances.get(key);
-    if (existing) {
+    if(existing) {
       existing.panel.reveal(column);
       const generation = existing.update(problem, status);
       ProblemPanel.activeKey = key;
@@ -238,11 +134,7 @@ export class ProblemPanel {
       "cfCompanionProblem",
       problem.problem_code,
       column ?? vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [vscode.Uri.joinPath(extensionUri, "media")],
-      },
+      { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, "media")]}
     );
 
     const instance = new ProblemPanel(panel, extensionUri, key);
@@ -251,46 +143,31 @@ export class ProblemPanel {
     return instance.update(problem, status);
   }
   
-  static updateSilently(
-    problem: IncomingProblem,
-    extensionUri: vscode.Uri,
-  ): void {
+  static updateSilently(problem: IncomingProblem, extensionUri: vscode.Uri): void {
     const key = `${problem.contest_id}/${problem.problem_code}`;
     const existing = ProblemPanel.instances.get(key);
-    if (!existing) return;
+    if(!existing) return;
     existing.update(problem, existing.lastStatus ?? "Not Attempted");
   }
   
-  static refreshStatus(
-    contestId: string,
-    problemCode: string,
-    status: ProblemStatus,
-    expectedGeneration?: number,
-  ): void {
+  static refreshStatus(contestId: string, problemCode: string, status: ProblemStatus, expectedGeneration?: number): void {
     const key = `${contestId}/${problemCode}`;
     const instance = ProblemPanel.instances.get(key);
-    if (!instance || !instance.lastProblem) {
+    if(!instance || !instance.lastProblem) {
       return;
     }
-    if (
-      expectedGeneration !== undefined &&
-      expectedGeneration !== instance.statusGeneration
-    ) {
+    if(expectedGeneration !== undefined && expectedGeneration !== instance.statusGeneration){
       // A newer open/reopen has happened since this refresh was
       // requested — this resolution is stale, drop it.
       return;
     }
-    instance.lastStatusRefresh = Date.now();
     const bestStatus = pickBestStatus(instance.lastStatus, status);
     instance.lastStatus = bestStatus;
     instance.setStatus(bestStatus);
   }
 
   private setStatus(status: ProblemStatus): void {
-    this.panel.webview.postMessage({
-      command: "statusUpdate",
-      status,
-    });
+    this.panel.webview.postMessage({command: "statusUpdate", status});
   }
 
   private update(problem: IncomingProblem, status: ProblemStatus): number {
@@ -300,7 +177,6 @@ export class ProblemPanel {
     const status_ = this.lastStatus;
     this.statusGeneration += 1;
     const generation = this.statusGeneration;
-    this.lastStatusRefresh = 0;
     // this.panel.title = `${problem.contest_id}${problem.problem_code} · ${problem.problem_name}`;
     this.panel.title = problem.problem_code;
     this.panel.webview.html = this.render(problem, status_);
@@ -308,15 +184,11 @@ export class ProblemPanel {
   }
 
   private asset(...segments: string[]): vscode.Uri {
-    return this.panel.webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, "media", ...segments),
-    );
+    return this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "media", ...segments));
   }
 
   private render(problem: IncomingProblem, status: ProblemStatus): string {
-    const { protectedHtml: statementHtml } = protectMath(
-      problem.statement_html ?? "",
-    );
+    const { protectedHtml: statementHtml } = protectMath(problem.statement_html ?? "");
     const nonce = getNonce();
     const webview = this.panel.webview;
 
@@ -494,18 +366,18 @@ export class ProblemPanel {
     // Only remove this instance if the map still points at it — guards
     // against a stale dispose() firing after this key was already
     // replaced by a newer instance.
-    if (ProblemPanel.instances.get(this.currentProblemKey) === this) {
+    if(ProblemPanel.instances.get(this.currentProblemKey) === this){
       ProblemPanel.instances.delete(this.currentProblemKey);
     }
-    if (ProblemPanel.activeKey === this.currentProblemKey) {
+    if(ProblemPanel.activeKey === this.currentProblemKey){
       ProblemPanel.activeKey = undefined;
     }
-    if (this.statusRefreshTimer) {
+    if(this.statusRefreshTimer){
       clearInterval(this.statusRefreshTimer);
       this.statusRefreshTimer = undefined;
     }
     this.panel.dispose();
-    while (this.disposables.length) {
+    while(this.disposables.length){
       this.disposables.pop()?.dispose();
     }
   }
@@ -526,30 +398,21 @@ function protectMath(html: string): { protectedHtml: string } {
 
   let result = html;
 
-  result = result.replace(/\\\[([\s\S]+?)\\\]/g, (_m, latex) =>
-    toTarget(latex, true),
-  );
-  result = result.replace(/\\\(([\s\S]+?)\\\)/g, (_m, latex) =>
-    toTarget(latex, false),
-  );
-
+  result = result.replace(/\\\[([\s\S]+?)\\\]/g, (_m, latex) => toTarget(latex, true));
+  result = result.replace(/\\\(([\s\S]+?)\\\)/g, (_m, latex) => toTarget(latex, false));
   result = scanDollarMath(result, toTarget);
-
   return { protectedHtml: result };
 }
 
-function scanDollarMath(
-  html: string,
-  toTarget: (latex: string, display: boolean) => string,
-): string {
+function scanDollarMath(html: string, toTarget: (latex: string, display: boolean) => string): string {
   let out = "";
   let i = 0;
   let mode: "inline" | "display" | null = null;
   let spanStart = -1;
 
-  while (i < html.length) {
-    if (html[i] !== "$") {
-      if (mode === null) {
+  while(i < html.length){
+    if(html[i] !== "$"){
+      if(mode === null){
         out += html[i];
       }
       i++;
@@ -557,40 +420,40 @@ function scanDollarMath(
     }
 
     let runLength = 0;
-    while (html[i + runLength] === "$") {
+    while(html[i + runLength] === "$"){
       runLength++;
     }
 
-    if (mode === null && runLength >= 6) {
+    if(mode === null && runLength >= 6){
       i += 6;
       mode = "display";
       spanStart = i;
-    } else if (mode === null && runLength >= 3) {
+    } 
+    else if(mode === null && runLength >= 3){
       i += 3;
       mode = "inline";
       spanStart = i;
-    } else if (mode === "inline" && runLength >= 3) {
+    } 
+    else if(mode === "inline" && runLength >= 3){
       out += toTarget(html.slice(spanStart, i), false);
       i += 3;
       mode = null;
-    } else if (mode === "display" && runLength >= 6) {
+    } 
+    else if(mode === "display" && runLength >= 6){
       out += toTarget(html.slice(spanStart, i), true);
       i += 6;
       mode = null;
-    } else {
-      
-      if (mode === null) {
+    } 
+    else{  
+      if(mode === null){
         out += "$".repeat(runLength);
       }
       i += runLength;
     }
   }
-
-  if (mode !== null && spanStart >= 0) {
-    
+  if(mode !== null && spanStart >= 0){
     out += html.slice(spanStart);
   }
-
   return out;
 }
 
@@ -611,17 +474,15 @@ function renderStatusBadge(status: ProblemStatus): string {
     "Pretest Passed": "pretest-passed",
   };
 
-  const label =
-    status === "Not Attempted" ? "NA" : status === "Loading" ? "⋯" : status;
+  const label = status === "Not Attempted" ? "NA" : status === "Loading" ? "⋯" : status;
 
   return `<span class="status-badge status-${classMap[status]}">${label}</span>`;
 }
 
 function getNonce(): string {
   let text = "";
-  const possible =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 32; i++) {
+  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for(let i = 0; i < 32; i++){
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
   return text;
