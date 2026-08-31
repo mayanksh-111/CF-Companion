@@ -398,10 +398,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.commands.registerCommand(
             "cfCompanion.submitSolution",
             async (args?: { compiler?: string }) => {
+                const activeEditorProblem = vscode.window.activeTextEditor
+                    ? (await problemContext.resolve(vscode.window.activeTextEditor.document))?.problem
+                    : undefined;
+
+                // Prefer whatever problem the currently focused editor resolves to —
+                // that's what the user is actually looking at and about to submit.
+                // Only fall back to the statement panel / test panel state when the
+                // active editor isn't a recognized solution file (e.g. focus is in
+                // a webview, or no editor is open at all).
                 const problem =
+                    activeEditorProblem ??
                     ProblemPanel.getActiveProblem() ??
-                    testWorkflow.activeProblem ??
-                    (vscode.window.activeTextEditor ? (await problemContext.resolve(vscode.window.activeTextEditor.document))?.problem : undefined);
+                    testWorkflow.activeProblem;
 
                 if(!problem){
                     vscode.window.showErrorMessage(
@@ -412,7 +421,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
                 let solutionDoc: vscode.TextDocument;
                 const activeEditor = vscode.window.activeTextEditor;
-                const activeMatchesProblem = activeEditor && (await problemContext.resolve(activeEditor.document))?.problem.contest_id === problem.contest_id;
+                const activeMatchesProblem =
+                    activeEditor &&
+                    activeEditorProblem?.contest_id === problem.contest_id &&
+                    activeEditorProblem?.problem_code === problem.problem_code;
 
                 if(activeMatchesProblem && activeEditor){
                     solutionDoc = activeEditor.document;

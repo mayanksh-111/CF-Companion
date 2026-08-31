@@ -799,28 +799,27 @@
 
     function mapVerdictText(text) {
         const t = cleanText(text || '').toLowerCase();
-        if (!t) return null;
+        if(!t) return null;
 
-        if (t.includes('in queue') || t.includes('running') || t.includes('judging')) return 'TESTING';
-        if (t.startsWith('accepted')) return 'OK';
-        if (t.startsWith('wrong answer')) return 'WRONG_ANSWER';
-        if (t.startsWith('time limit exceeded')) return 'TIME_LIMIT_EXCEEDED';
-        if (t.startsWith('memory limit exceeded')) return 'MEMORY_LIMIT_EXCEEDED';
-        if (t.startsWith('idleness limit exceeded')) return 'IDLENESS_LIMIT_EXCEEDED';
-        if (t.startsWith('runtime error')) return 'RUNTIME_ERROR';
-        if (t.startsWith('compilation error')) return 'COMPILATION_ERROR';
-        if (t.startsWith('presentation error')) return 'PRESENTATION_ERROR';
-        if (t.startsWith('security violated')) return 'SECURITY_VIOLATED';
-        if (t.startsWith('crashed')) return 'CRASHED';
-        if (t.startsWith('denial of judgement') || t.includes('failed')) return 'FAILED';
-        if (t.startsWith('partial')) return 'PARTIAL';
-        if (t.startsWith('hacked')) return 'HACKED';
-        if (t.startsWith('skipped')) return 'SKIPPED';
-        if (t.startsWith('rejected')) return 'REJECTED';
-        if (t.startsWith('challenged')) return 'CHALLENGED';
-        if (t.startsWith('pretest passed')) return 'PRETEST PASSED';
-
-        return 'TESTING';
+        if(t.includes('in queue') || t.includes('running') || t.includes('judging')) return 'TESTING';
+        if(t.includes('pretest passed') || t.includes('pretests passed')) return 'PRETEST PASSED';
+        if(t.startsWith('accepted')) return 'OK';
+        if(t.startsWith('wrong answer')) return 'WRONG_ANSWER';
+        if(t.startsWith('time limit exceeded')) return 'TIME_LIMIT_EXCEEDED';
+        if(t.startsWith('memory limit exceeded')) return 'MEMORY_LIMIT_EXCEEDED';
+        if(t.startsWith('idleness limit exceeded')) return 'IDLENESS_LIMIT_EXCEEDED';
+        if(t.startsWith('runtime error')) return 'RUNTIME_ERROR';
+        if(t.startsWith('compilation error')) return 'COMPILATION_ERROR';
+        if(t.startsWith('presentation error')) return 'PRESENTATION_ERROR';
+        if(t.startsWith('security violated')) return 'SECURITY_VIOLATED';
+        if(t.startsWith('crashed')) return 'CRASHED';
+        if(t.startsWith('denial of judgement') || t.includes('failed')) return 'FAILED';
+        if(t.startsWith('partial')) return 'PARTIAL';
+        if(t.startsWith('hacked')) return 'HACKED';
+        if(t.startsWith('skipped')) return 'SKIPPED';
+        if(t.startsWith('rejected')) return 'REJECTED';
+        if(t.startsWith('challenged')) return 'CHALLENGED';
+        return null;
     }
 
     const NON_FINAL_VERDICTS = new Set(['TESTING', 'SUBMITTED', 'QUEUED', 'COMPILING', 'RUNNING']);
