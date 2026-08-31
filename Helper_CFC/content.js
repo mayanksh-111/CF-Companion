@@ -828,7 +828,21 @@
         return NON_FINAL_VERDICTS.has(verdict);
     }
 
-    function extractRow(row) {
+    function extractRowHandle(row){
+        const profileAnchor = row.querySelector('a[href^="/profile/"]');
+        if(!profileAnchor) return null;
+        const href = profileAnchor.getAttribute('href') || '';
+        const match = href.match(/^\/profile\/([^/?#]+)/i);
+        if(match) return decodeURIComponent(match[1]);
+        return cleanText(profileAnchor.textContent) || null;
+    }
+
+    function extractRow(row, expectedHandle = null) {
+        if(expectedHandle){
+            const rowHandle = extractRowHandle(row);
+            if(!handlesMatch(expectedHandle, rowHandle)) return null;
+        }
+
         const verdictCell =
             row.querySelector('.submissionVerdictWrapper') ||
             row.querySelector('[waiter="submissionVerdict"]') ||
@@ -889,14 +903,14 @@
         };
     }
 
-    function scrapeSubmissionsTable(){
+    function scrapeSubmissionsTable(expectedHandle = null){
         const table = document.querySelector('table.status-frame-datatable');
         if(!table) return [];
 
         const domRows = Array.from(table.querySelectorAll('tr'));
         const results = [];
         for(const row of domRows){
-            const extracted = extractRow(row);
+            const extracted = extractRow(row, expectedHandle);
             if(extracted){
                 results.push(extracted);
             }
@@ -942,7 +956,7 @@
             console.log('[CFC DEBUG] HANDLE MISMATCH');
             return [];
         }
-        const rows = scrapeSubmissionsTable();
+        const rows = scrapeSubmissionsTable(requestHandle);
 
         console.log('[CFC DEBUG] EXTRACTED ROW COUNT:', rows.length);
         
