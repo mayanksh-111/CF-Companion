@@ -1,106 +1,226 @@
 # CF Companion
 
-Solve Codeforces problems without leaving VS Code. CF Companion pairs with a browser companion script to pull problems straight from the CF website into your editor, run your solution against sample tests, submit with one keystroke, and track your progress with a full analytics dashboard.
+A simple tool for competitive programming that brings **VS Code** and **Chrome** together.
 
-Version 0.1.2 · Requires VS Code 1.85.0 or later
+Solve Codeforces problems without constantly switching between your browser and editor. CF Companion pulls problems directly from Codeforces into VS Code, runs your code against sample and custom tests, submits solutions, and keeps track of your progress.
+
+> **VS Code:** `0.1.2` · **Chrome Helper:** `1.0`
+> **Requires VS Code 1.85.0 or later**
+
+## Download
+
+### VS Code Extension
+
+Download the `.vsix` file from the release assets and install it directly in VS Code.
+
+### Chrome Helper
+
+Download the Chrome extension and load it into Chrome. The helper connects Codeforces with the VS Code extension and handles problem parsing, submissions, and verdict updates.
+
+---
 
 ## Features
 
-**One-click problem parsing**
-Browse to a problem on Codeforces and send it straight to VS Code. CF Companion listens on a local WebSocket/HTTP port and creates a ready-to-code solution file for you, sample tests included.
+### Problem Parsing
 
-**Run tests instantly**
-Compile and run your solution against every sample (and custom) test case with a click. Results stream in per-test as they finish, with pass/fail, timing, and full stdout/stderr. Supports C++, Python, and Java out of the box.
+Open any problem on Codeforces and send it directly to VS Code. The problem statement, sample tests, tags, time limit, and memory limit are imported automatically, and a solution file is created for you.
 
-**Custom test cases**
-Add your own test cases alongside the official samples. Edit, duplicate, or delete them right from the Tests panel.
+### Run Tests
 
-**Submit from the editor**
-Submit your open solution directly to Codeforces, with compiler selection, and account verification handled for you via a lightweight browser companion.
+Compile and run your solution against all sample and custom test cases with a single click.
 
-**Analytics dashboard**
-Open the dashboard for a full breakdown of your CF journey:
-- Rating graph with contest-by-contest history
-- Submission heatmap (GitHub-style, last 365 days)
-- Verdict distribution and acceptance rate
-- Problems solved by tag and by difficulty
-- Full contest and recent-submission history
+Results are shown as each test finishes, including:
 
-**Problem library**
-Every problem you open is saved and organized by contest in the sidebar tree, so you can jump back into old problems anytime.
+* Pass/fail status
+* Execution time
+* Standard output
+* Standard error
+
+Currently supports **C++, Python, and Java**.
+
+### Custom Tests
+
+Create your own test cases alongside the official samples. You can add, edit, duplicate, and delete tests directly from the Tests panel.
+
+### Submit from VS Code
+
+Submit your solution to Codeforces without leaving VS Code. Select the compiler, submit the active solution, and let the Chrome helper handle the Codeforces submission page.
+
+### Verdict Tracking
+
+Keep track of your submissions directly in VS Code. The Chrome helper watches the Codeforces submissions page and sends verdict updates back to CF Companion, including pending and judging states.
+
+### Problem Library
+
+Problems you open are saved and organized by contest in the sidebar, making it easy to return to previously solved or attempted problems.
+
+### Analytics Dashboard
+
+Track your Codeforces progress from a single dashboard:
+
+* Rating graph with contest history
+* GitHub-style submission heatmap
+* Verdict distribution and acceptance rate
+* Problems solved by tag
+* Problems solved by difficulty
+* Contest history
+* Recent submissions
+
+---
 
 ## Getting Started
 
-1. Install **CF Companion** and open it in VS Code.
-2. Set your Codeforces handle from the command palette or sidebar (`CF Companion: Set Codeforces Handle`).
-3. Download the CF Companion Helper browser extension from its repo and load it into Chrome, either unpacked (via `chrome://extensions` → Developer mode → Load unpacked) or packed (drag the `.crx` onto `chrome://extensions`). Keep a Codeforces tab open.
-4. Browse to any problem and parse it — it lands in VS Code ready to solve.
-5. Code your solution, then use the Run Tests and Submit buttons (or your own keybindings) to test and submit.
+### 1. Install the VS Code Extension
+
+Install the CF Companion `.vsix` file from the latest GitHub release.
+
+In VS Code, open:
+
+**Extensions → `...` → Install from VSIX...**
+
+and select the downloaded `.vsix` file.
+
+### 2. Set Your Codeforces Handle
+
+Open the Command Palette and run:
+
+```text
+CF Companion: Set Codeforces Handle
+```
+
+You can also configure it through VS Code settings.
+
+### 3. Install the Chrome Helper
+
+Download the **CF Companion Helper** from the release assets.
+
+In Chrome:
+
+1. Open `chrome://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select the Chrome extension folder
+
+Keep a Codeforces tab open and make sure you're logged in.
+
+### 4. Open a Problem
+
+Go to any Codeforces problem and use the Chrome helper to send it to VS Code.
+
+The problem will appear in CF Companion with its statement and sample tests.
+
+### 5. Solve, Test, and Submit
+
+Write your solution in VS Code and use:
+
+* **Run Tests** to test your code
+* **Submit Solution** to submit it to Codeforces
+* The submission status will automatically update when the verdict is available
+
+---
 
 ## Commands
 
-Most commands are also available as buttons in the sidebar, dashboard, and editor toolbar. The keybindings below are just the defaults — all of them can be changed from **File > Preferences > Keyboard Shortcuts** in VS Code.
+Most commands are also available through the CF Companion sidebar, dashboard, and editor toolbar.
 
-| Command | Default Keybinding | Description |
-|---|---|---|
-| CF Companion: Open Dashboard | `Ctrl+Alt+D` | Open the analytics dashboard |
-| CF Companion: Open Problem | `Ctrl+O P` | Open a saved problem's statement |
-| CF Companion: Refresh Problem List | `Ctrl+Alt+R` | Reload the sidebar problem tree |
-| CF Companion: Set Codeforces Handle | `Ctrl+Alt+H` | Configure your CF handle |
-| CF Companion: Restart Listener | `Ctrl+Alt+L` | Restart the local parsing server |
-| CF Companion: Delete Contest | — | Remove a saved contest from your library (no default keybinding, destructive action) |
-| Codeforces: Submit Solution | `Ctrl+Enter` | Submit the active solution to Codeforces |
-| CF Companion: Create Solution | `Ctrl+Alt+N` | Create a solution file for a problem |
-| CF Companion: Open Solution | `Ctrl+O S` | Jump to a problem's existing solution file |
-| CF Companion: Run Tests | `Ctrl+'` | Run the active solution against its tests |
-| CF Companion: Add Custom Test | `Ctrl+Alt+A` | Add a custom test case |
+| Command                                 | Default Keybinding | Description                  |
+| --------------------------------------- | ------------------ | ---------------------------- |
+| **CF Companion: Open Dashboard**        | `Ctrl+Alt+D`       | Open the analytics dashboard |
+| **CF Companion: Open Problem**          | `Ctrl+O P`         | Open a saved problem         |
+| **CF Companion: Refresh Problem List**  | `Ctrl+Alt+R`       | Refresh the problem tree     |
+| **CF Companion: Set Codeforces Handle** | `Ctrl+Alt+H`       | Set your Codeforces handle   |
+| **CF Companion: Restart Listener**      | `Ctrl+Alt+L`       | Restart the local listener   |
+| **CF Companion: Delete Contest**        | —                  | Delete a saved contest       |
+| **Codeforces: Submit Solution**         | `Ctrl+Enter`       | Submit the active solution   |
+| **CF Companion: Create Solution**       | `Ctrl+Alt+N`       | Create a solution file       |
+| **CF Companion: Open Solution**         | `Ctrl+O S`         | Open an existing solution    |
+| **CF Companion: Run Tests**             | `Ctrl+'`           | Run the active solution      |
+| **CF Companion: Add Custom Test**       | `Ctrl+Alt+A`       | Add a custom test            |
+
+All keybindings can be changed from **File → Preferences → Keyboard Shortcuts** in VS Code.
+
+---
 
 ## Configuration
 
-| Setting | Default | Description |
-|---|---|---|
-| `cfCompanion.handle` | `""` | Your Codeforces handle |
-| `cfCompanion.port` | `10043` | Local port for incoming problem data |
-| `cfCompanion.submitCompiler.cpp/python/java` | — | Default submit-page compiler per language |
-| `cfCompanion.submitDryRun` | `false` | Fill the submit form but don't click Submit |
-| `cfCompanion.cppPath` / `cppFlags` | `g++` / `-O2 -std=c++17` | C++ compiler and flags |
-| `cfCompanion.pythonPath` | `python3` | Python interpreter path |
-| `cfCompanion.javacPath` / `javaPath` | `javac` / `java` | Java toolchain paths |
-| `cfCompanion.testTimeoutMs` | `3000` | Per-test timeout in milliseconds |
+| Setting                                      | Default          | Description                                  |
+| -------------------------------------------- | ---------------- | -------------------------------------------- |
+| `cfCompanion.handle`                         | `""`             | Your Codeforces handle                       |
+| `cfCompanion.port`                           | `10043`          | Local port used by the Chrome helper         |
+| `cfCompanion.submitCompiler.cpp/python/java` | —                | Default compiler for each language           |
+| `cfCompanion.submitDryRun`                   | `false`          | Fill the submit form without clicking Submit |
+| `cfCompanion.cppPath`                        | `g++`            | C++ compiler path                            |
+| `cfCompanion.cppFlags`                       | `-O2 -std=c++17` | C++ compiler flags                           |
+| `cfCompanion.pythonPath`                     | `python3`        | Python interpreter path                      |
+| `cfCompanion.javacPath`                      | `javac`          | Java compiler path                           |
+| `cfCompanion.javaPath`                       | `java`           | Java runtime path                            |
+| `cfCompanion.testTimeoutMs`                  | `3000`           | Per-test timeout in milliseconds             |
+
+---
 
 ## Requirements
 
-- VS Code `1.85.0` or later
-- A compiler/interpreter on your PATH for whichever languages you use (`g++`, `python3`, `javac`/`java`)
-- The CF Companion Helper browser extension (Chrome), loaded from its repo, with an open, logged-in Codeforces tab, for problem parsing and submission
+* **VS Code 1.85.0 or later**
+* A compiler/interpreter for the languages you want to use:
 
-## Chrome Helper Extension
+  * `g++` for C++
+  * `python3` for Python
+  * `javac` and `java` for Java
+* **Chrome**
+* **CF Companion Helper** browser extension
+* An open, logged-in **Codeforces** tab
 
-CF Companion cannot read a Codeforces page or drive a real submit form by itself — that part is handled by a companion browser extension ("CF Companion Helper") that runs alongside this VS Code extension.
+---
 
-What it does:
-- Scrapes the problem statement and sample tests from the page you're viewing and sends them to VS Code over a local WebSocket/HTTP connection (`cfCompanion.port`, default `10043`)
-- Watches your submissions page and reports verdicts back so status updates (including pending/judging) show up without any polling
-- Picks up pending submit jobs queued from VS Code, fills in the submit form on codeforces.com, and clicks Submit (or stops short of clicking, in dry-run mode)
+## How the Chrome Helper Works
 
-Keep in mind which Codeforces page needs to be open for each feature:
-- **Live verdict/status updates** — a submissions page (e.g. `.../my` or a contest's submissions page) must be open for the helper to scrape it.
-- **Submitting a solution** — a normal Codeforces page (any page, logged in) must be open beforehand so the helper can navigate it to the submit form and fill it in.
+CF Companion uses a small browser companion to interact with Codeforces pages.
 
-Download it from its repository. Depending on what's provided there, either:
-- **Unpacked**: open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the downloaded folder, or
-- **Packed** (`.crx`): drag the `.crx` file onto the `chrome://extensions` page to install it.
+The Chrome helper:
 
-Keep a Codeforces tab open while you work, and make sure the extension is enabled — CF Companion in VS Code will do nothing without it.
+* Reads problem statements and sample tests from Codeforces
+* Sends problem data to VS Code through a local WebSocket/HTTP connection
+* Watches the submissions page for verdict updates
+* Handles submission jobs sent from VS Code
+* Fills and submits the Codeforces submission form
+* Supports dry-run submissions when enabled
+
+The communication stays local between the browser helper and CF Companion.
+
+### Which Codeforces page should be open?
+
+**For problem parsing**
+
+Open the Codeforces problem you want to import.
+
+**For verdict tracking**
+
+Keep a Codeforces submissions page open, such as your submissions page or a contest submissions page.
+
+**For submitting**
+
+Keep any normal Codeforces page open and logged in. The helper can navigate to the submission page when a submission is requested.
+
+---
 
 ## Privacy
 
-CF Companion only talks to `codeforces.com`'s public API and a local server on your machine used to communicate with your browser. No data is sent anywhere else.
+CF Companion communicates with:
 
-## Contributing & Issues
+* `codeforces.com`
+* A local server running on your machine
+* The CF Companion Chrome helper
 
-Found a bug or have a feature request? Open an issue or PR on GitHub — contributions are welcome!
+No data is sent to any external service.
+
+---
+
+## Contributing
+
+Found a bug or have an idea for a feature?
+
+Open an issue or submit a pull request. Contributions are welcome.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE) for details.
+MIT License. See [LICENSE](./LICENSE) for details.
