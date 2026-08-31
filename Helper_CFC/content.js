@@ -212,7 +212,7 @@
     }
 
     function getTags(document){
-        return Array.from(document.querySelectorAll('.problem-statement .tag-box')).map((tag) => cleanText(tag.textContent));
+        return Array.from(document.querySelectorAll('.tag-box')).map((tag) => cleanText(tag.textContent));
     }
 
     function getSamples(statement){

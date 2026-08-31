@@ -13,6 +13,19 @@ function normalizeLine(line: string): string {
   return line.replace(/[ \t]+$/g, "");
 }
 
+/**
+ * Codeforces problem names sometimes come prefixed with the problem code
+ * (e.g. problem_code "C" + problem_name "C. Far Cities"). Strip that
+ * prefix so we can display just the plain name ("Far Cities").
+ */
+function problemTitle(problemCode: string, problemName: string): string {
+  const code = (problemCode ?? "").trim();
+  const name = (problemName ?? "").trim();
+  const escapedCode = code.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const prefixPattern = new RegExp(`^${escapedCode}\\s*[.:)-]?\\s*`, "i");
+  return code ? name.replace(prefixPattern, "") : name;
+}
+
 
 const DRAFT_SCRIPT_CORE = /* js */ `
   function escHtml(s) {
@@ -250,10 +263,13 @@ export class TestPanel {
     this.state = state;
     TestPanel.host?.setTabTitle("tests", `Tests · ${state.problem.problem_code}`);
     const rows = state.tests.map((t) => this.renderTestRow(t, state.results.get(t.id))).join("");
+    const passedCount = state.tests.filter((t) => state.results.get(t.id)?.status === "pass").length;
 
     TestPanel.host?.postToTab("tests", {
       command: "problemUpdate",
       crumb: `${escapeHtml(state.problem.contest_id)}${escapeHtml(state.problem.problem_code)}`,
+      title: escapeHtml(problemTitle(state.problem.problem_code, state.problem.problem_name)),
+      passLabel: `${passedCount} / ${state.tests.length} passed`,
       rows,
       compilerOptions: this.renderCompilerOptions(state),
     });
@@ -299,18 +315,25 @@ export class TestPanel {
       return this.renderEmptyInline(state);
     }
     const rows = state.tests.map((t) => this.renderTestRow(t, state.results.get(t.id))).join("");
+    const passedCount = state.tests.filter((t) => state.results.get(t.id)?.status === "pass").length;
     return /* html */ `
+    <div class="panel-header">
+      <div class="crumb">${escapeHtml(state.problem.contest_id)}${escapeHtml(state.problem.problem_code)}</div>
+      <div class="problem-title-row">
+        <div class="problem-title">${escapeHtml(problemTitle(state.problem.problem_code, state.problem.problem_name))}</div>
+        <div class="badge-group">
+          <div class="pass-badge" id="passBadge">${passedCount} / ${state.tests.length} passed</div>
+        </div>
+      </div>
+    </div>
     <div class="toolbar">
     <div class="test-list" id="testList">${rows}</div>
-  <div class="toolbar-row1">
-    <div class="crumb">${escapeHtml(state.problem.contest_id)}${escapeHtml(state.problem.problem_code)}</div>
+  <div class="btn-row">
+    <button id="addTestBtn" class="cph-btn cph-btn-add" title="Add custom test">+ New Testcase</button>
+    <button id="runBtn" class="cph-btn cph-btn-run" title="Run all tests">▶ Run All</button>
   </div>
   <select id="compilerSelect" class="ghost-btn" title="Compiler to submit with">${this.renderCompilerOptions(state)}</select>
-  <div class="toolbar-row2">
-    <button id="addTestBtn" class="ghost-btn" title="Add custom test">+ Test</button>
-    <button id="runBtn" class="primary-btn" title="Run all tests">▶ Run</button>
-    <button id="submitBtn" class="submit-btn" title="Submit solution">Submit</button>
-  </div>
+  <button id="submitBtn" class="cph-btn cph-btn-submit" title="Submit solution">⬆ Submit</button>
 </div>
   <script>
   (function(){
@@ -344,6 +367,12 @@ export class TestPanel {
         const crumbEl = document.querySelector('#tab-tests .crumb');
         if (crumbEl) crumbEl.textContent = msg.crumb;
 
+        const titleEl = document.querySelector('#tab-tests .problem-title');
+        if (titleEl && msg.title) titleEl.textContent = msg.title;
+
+        const badgeEl = document.getElementById('passBadge');
+        if (badgeEl && msg.passLabel) badgeEl.textContent = msg.passLabel;
+
         const testList = document.getElementById('testList');
         if (testList) {
           testList.innerHTML = msg.rows;
@@ -374,6 +403,9 @@ export class TestPanel {
       badge.textContent = meta.icon;
       badge.title = meta.label;
 
+      const statusTextEl = row.querySelector('.status-text');
+      if (statusTextEl) statusTextEl.textContent = r.status === 'pending' ? '' : meta.label;
+
       const timeEl = row.querySelector('.test-time');
       timeEl.textContent = r.timeMs !== undefined ? r.timeMs + ' ms' : '';
 
@@ -392,6 +424,13 @@ export class TestPanel {
         errEl.textContent = errText;
         errEl.style.display = errText ? 'block' : 'none';
       }
+
+      const badgeEl = document.getElementById('passBadge');
+      const allRows = document.querySelectorAll('#testList .test-row');
+      const passed = document.querySelectorAll('#testList .status-pass').length;
+      if (badgeEl) {
+        badgeEl.textContent = passed + ' / ' + allRows.length + ' passed';
+      }
     });
   })();
   </script>`;
@@ -400,6 +439,7 @@ export class TestPanel {
   private renderTestRow(test: TestCase, result: TestResult | undefined): string {
     const status = result?.status ?? "pending";
     const icon = { pending: "○", running: "◐", pass: "✓", fail: "✗", error: "!", timeout: "⏱" }[status];
+    const statusText = { pending: "", running: "Running…", pass: "Passed", fail: "Failed", error: "Error", timeout: "Timeout" }[status];
     const label = test.origin === "sample" ? `Sample ${test.id.replace("sample-", "")}` : "Custom test";
     const timeLabel = result?.timeMs !== undefined ? `${result.timeMs} ms` : "";
     const errText = result?.errorMessage || result?.stderr || "";
@@ -415,6 +455,7 @@ export class TestPanel {
           <span class="chevron">›</span>
           <span class="status-icon" title="${status}">${icon}</span>
           <span class="test-label">${escapeHtml(label)}</span>
+          <span class="status-text">${statusText}</span>
           <span class="test-time">${timeLabel}</span>
           <button class="run-test-btn" data-test-id="${escapeHtml(test.id)}" title="Run this test">▶</button>
           <button class="dup-test-btn" data-test-id="${escapeHtml(test.id)}" title="Duplicate as new test">⧉</button>
@@ -531,7 +572,7 @@ body {
   background: var(--vscode-editor-background);
 
   margin: 0;
-  font-size: 12.5px;
+  font-size: 14px;
 
   height: 100vh;
 
@@ -543,7 +584,74 @@ body {
 
 
 /* =========================================================
-   TOOLBAR
+   PANEL HEADER (problem name + pass badge, CPH-style)
+   ========================================================= */
+
+.panel-header {
+  flex-shrink: 0;
+  padding: 8px 10px 6px;
+  background: var(--vscode-editor-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.problem-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.problem-title {
+  font-weight: 700;
+  font-size: 1.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.badge-group {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pass-badge {
+  flex-shrink: 0;
+  font-size: 0.8em;
+  font-weight: 650;
+  padding: 2px 8px;
+  border-radius: 3px;
+  color: var(--vscode-testing-iconPassed, #4caf50);
+  border: 1px solid var(--vscode-testing-iconPassed, #4caf50);
+  background: rgba(76, 175, 80, 0.1);
+  white-space: nowrap;
+}
+
+
+
+/* =========================================================
+   STATUS TEXT (colored word next to icon, e.g. "Passed")
+   ========================================================= */
+
+.status-text {
+  font-size: 0.85em;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.status-pass .status-text { color: #4caf50; }
+.status-fail .status-text { color: #f44336; }
+.status-error .status-text { color: #9c27b0; }
+.status-timeout .status-text { color: #ff9800; }
+.status-running .status-text { color: #2196f3; }
+.status-pending .status-text { color: var(--vscode-descriptionForeground); }
+
+
+/* =========================================================
+   TOOLBAR (CPH-style: full-width stacked action buttons)
    ========================================================= */
 
 .toolbar {
@@ -551,39 +659,37 @@ body {
   flex-direction: column;
   gap: 6px;
   padding: 8px 10px;
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-height: 0;
   background: var(--vscode-editor-background);
   border-bottom: 1px solid var(--vscode-panel-border);
-  position: sticky;   /* add */
-  bottom: 0;           /* add */
+  position: sticky;
+  bottom: 0;
   z-index: 1;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.toolbar-row1,
-.toolbar-row2 {
+.toolbar button {
+  width: 100%;
+  display: block;
+}
+
+.btn-row {
   display: flex;
-  align-items: center;
   gap: 6px;
-  flex: wrap;
 }
 
-.toolbar-row1 .crumb {
+.btn-row button {
   flex: 1 1 0;
   min-width: 0;
 }
 
-.toolbar-row2 button {
-  flex: 1 1 60px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .crumb {
   font-weight: 650;
-  font-size: 0.85em;
+  font-size: 0.78em;
   letter-spacing: 0.02em;
+  text-transform: uppercase;
   color: var(--vscode-descriptionForeground);
   white-space: nowrap;
   overflow: hidden;
@@ -718,6 +824,38 @@ button:disabled {
 }
 
 .submit-btn:hover {
+  filter: brightness(1.08);
+}
+
+
+/* =========================================================
+   CPH-STYLE ACTION BUTTONS (full-width, colored, stacked)
+   ========================================================= */
+
+.cph-btn {
+  width: 100%;
+  min-height: 32px;
+  padding: 7px 10px;
+  font-weight: 650;
+  font-size: 0.88em;
+  border-radius: 3px;
+  border: none;
+  color: #fff;
+}
+
+.cph-btn-add {
+  background: var(--vscode-testing-iconPassed, #2ea043);
+}
+.cph-btn-add:hover {
+  filter: brightness(1.08);
+}
+
+.cph-btn-submit,
+.cph-btn-run {
+  background: var(--vscode-textLink-foreground, #1f8fd6);
+}
+.cph-btn-submit:hover,
+.cph-btn-run:hover {
   filter: brightness(1.08);
 }
 
@@ -922,12 +1060,21 @@ button:disabled {
   background: var(--vscode-editor-background);
   border: 1px solid var(--vscode-panel-border);
   color: var(--vscode-descriptionForeground);
-  padding: 2px 6px;
+  padding: 0;
+  width: 24px;
+  height: 24px;
   min-width: 24px;
-  min-height: 23px;
+  min-height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  flex: 0 0 24px;
   font-size: 0.85em;
   border-radius: 1px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .delete-test-btn:hover {

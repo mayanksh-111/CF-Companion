@@ -205,7 +205,7 @@ export class SidebarPanel implements vscode.WebviewViewProvider, SidebarHost {
           <p class="muted">Problems sent from the parser script will show up here.</p>
         </div>`;
     }
-
+    const cleanProblemName = (name: string) => name.replace(/^[A-Z]\d*\.\s*/, '');
     const body = entries
       .map((entry) => {
         const problems = entry.problems
@@ -217,8 +217,7 @@ export class SidebarPanel implements vscode.WebviewViewProvider, SidebarHost {
             return /* html */ `
               <div class="cp-problem-row${isActive ? " cp-active" : ""}" data-contest="${escapeHtml(p.contestId)}" data-problem="${escapeHtml(p.problemCode)}" tabindex="0">
                 <span class="cp-problem-code">${escapeHtml(p.problemCode)}</span>
-                <span class="cp-problem-name">${escapeHtml(p.problemName)}</span>
-                ${p.tags.length ? `<span class="cp-problem-tags">${escapeHtml(p.tags.slice(0, 3).join(", "))}</span>` : ""}
+                <span class="cp-problem-name">${escapeHtml(cleanProblemName(p.problemName))}</span>
                 <button class="cp-row-action-btn cp-open-solution-btn" data-contest="${escapeHtml(p.contestId)}" data-problem="${escapeHtml(p.problemCode)}" title="Open solution file">${p.solutionPath ? "→" : ""}</button>
                 <button class="cp-row-action-btn cp-create-solution-btn" data-contest="${escapeHtml(p.contestId)}" data-problem="${escapeHtml(p.problemCode)}" title="Create solution">+</button>
               </div>`;

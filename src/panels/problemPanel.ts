@@ -177,8 +177,8 @@ export class ProblemPanel {
     const status_ = this.lastStatus;
     this.statusGeneration += 1;
     const generation = this.statusGeneration;
-    // this.panel.title = `${problem.contest_id}${problem.problem_code} · ${problem.problem_name}`;
-    this.panel.title = problem.problem_code;
+    this.panel.title = `${problem.contest_id}${problem.problem_code}`;
+    // this.panel.title = problem.problem_code;
     this.panel.webview.html = this.render(problem, status_);
     return generation;
   }
